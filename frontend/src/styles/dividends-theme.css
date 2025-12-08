@@ -1,0 +1,431 @@
+:root {
+    /* Backgrounds */
+    --bg-root: #05060a;
+    --bg-panel: #151319;
+    --bg-panel-alt: #191621;
+    --bg-chart: #050509;
+
+    /* Accents */
+    --accent-gold: #ffd671;
+    --accent-orange: #ff9d4a;
+    --accent-orange-2: #ff7e4d;
+    --accent-green: #3bffb0;
+    --accent-red: #ff4b6a;
+    --accent-blue: #5ac8ff;
+
+    /* Text */
+    --text-primary: #fdf6ff;
+    --text-secondary: #b8bed5;
+    --text-muted: #777d96;
+
+    /* Borders / shadows */
+    --border-soft: #262231;
+    --shadow-soft: 0 10px 25px rgba(0, 0, 0, 0.65);
+    --shadow-glow-green: 0 0 24px rgba(59, 255, 176, 0.35);
+    --shadow-glow-gold: 0 0 26px rgba(255, 214, 113, 0.35);
+}
+
+/* Global */
+html,
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: radial-gradient(circle at top, rgba(255, 255, 255, 0.05), transparent 55%),
+        var(--bg-root);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+}
+
+/* hide scrollbars but keep scroll */
+* {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+/* X-style 3-column layout */
+.app-shell {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1.8fr) 280px;
+    gap: 18px;
+    padding: 14px 18px;
+    height: 100vh;
+    box-sizing: border-box;
+}
+
+/* Left nav (glossy) */
+.app-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.app-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.app-logo-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    background: radial-gradient(circle at 30% 0%, #ffffff, transparent 60%),
+        linear-gradient(135deg, #ffd671, #ff9d4a);
+    box-shadow: var(--shadow-glow-gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+}
+
+.app-logo-text {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    color: var(--accent-gold);
+}
+
+.app-logo-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+}
+
+.nav-card {
+    background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 55%),
+        var(--bg-panel);
+    border-radius: 18px;
+    border: 1px solid var(--border-soft);
+    box-shadow: var(--shadow-soft);
+    padding: 10px 8px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.16s ease, transform 0.12s ease, color 0.16s ease;
+}
+
+.nav-item-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    transform: translateY(-1px);
+}
+
+.nav-item--active {
+    background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.12), transparent 55%),
+        linear-gradient(135deg, rgba(255, 157, 74, 0.35), rgba(255, 126, 77, 0.25));
+    color: var(--accent-gold);
+}
+
+/* Primary glossy button (Mine, Prestige, etc.) */
+.btn-primary {
+    border-radius: 999px;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    background: radial-gradient(circle at 20% 0%, #fff3d4, transparent 65%),
+        linear-gradient(135deg, var(--accent-orange), var(--accent-orange-2));
+    color: #25150b;
+    font-weight: 700;
+    font-size: 15px;
+    box-shadow: var(--shadow-soft);
+    transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.12s, filter 0.12s;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px) scale(1.02);
+    filter: brightness(1.05);
+}
+
+.btn-primary:active {
+    transform: translateY(1px) scale(0.97);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+}
+
+/* Center main column */
+.app-main {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow-y: auto;
+    max-height: 100vh;
+}
+
+/* Top header above chart */
+.main-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.main-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.main-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* Chart shell (glossy) */
+.chart-card {
+    background: radial-gradient(circle at top, rgba(91, 255, 203, 0.08), transparent 60%),
+        var(--bg-panel-alt);
+    border-radius: 22px;
+    border: 1px solid var(--border-soft);
+    box-shadow: var(--shadow-soft);
+    padding: 12px 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chart-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.pill {
+    border-radius: 999px;
+    padding: 4px 10px;
+    background: rgba(20, 20, 20, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 12px;
+}
+
+.pill--green {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+}
+
+.pill--gold {
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+}
+
+.chart-surface {
+    border-radius: 18px;
+    background: radial-gradient(circle at top, rgba(59, 255, 176, 0.06), transparent 70%),
+        var(--bg-chart);
+    padding: 10px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+    min-height: 400px;
+    width: 100%;
+}
+
+.chart-surface canvas {
+    width: 100% !important;
+    height: 400px !important;
+    display: block;
+}
+
+/* Right sidebar */
+.app-right {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.panel {
+    background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.06), transparent 55%),
+        var(--bg-panel);
+    border-radius: 18px;
+    border: 1px solid var(--border-soft);
+    box-shadow: var(--shadow-soft);
+    padding: 12px 14px;
+}
+
+.panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.degen-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 4px;
+    border-radius: 10px;
+    font-size: 13px;
+}
+
+.degen-row:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.degen-name {
+    color: var(--text-secondary);
+}
+
+.degen-pnl {
+    font-weight: 600;
+}
+
+.degen-pnl--up {
+    color: var(--accent-green);
+}
+
+.degen-pnl--down {
+    color: var(--accent-red);
+}
+
+/* ========================================
+   X + DEGEN CASINO HYBRID STYLES
+   ======================================== */
+
+/* Stream Card - Sleek crypto dashboard style */
+.stream-card {
+    background: linear-gradient(180deg, #151519 0%, #111114 100%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+.stream-card:hover {
+    background: linear-gradient(180deg, #1B1B20 0%, #141418 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+
+/* Title */
+.stream-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #F4F4F8;
+    margin-bottom: 6px;
+}
+
+/* Neon stat text */
+.stream-yield {
+    font-size: 14px;
+    color: #3BFFB0;
+    padding: 3px 8px;
+    background: rgba(59, 255, 176, 0.1);
+    border: 1px solid rgba(59, 255, 176, 0.25);
+    border-radius: 6px;
+    display: inline-block;
+}
+
+/* Icon container */
+.stream-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: #1D1E24;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+/* New BUY button - sleek fintech style */
+.btn-buy {
+    width: 100%;
+    background: linear-gradient(90deg, #272832 0%, #1C1C21 100%);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    color: #FFFFFF;
+    padding: 12px 0;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    transition: all 0.16s ease;
+    cursor: pointer;
+}
+
+.btn-buy:hover {
+    border-color: rgba(59, 255, 176, 0.45);
+    box-shadow: 0 0 12px rgba(59, 255, 176, 0.35);
+}
+
+.btn-buy:active {
+    transform: scale(0.97);
+}
+
+.btn-buy:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Next milestone bar */
+.milestone-bar {
+    background: #191A1F;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 8px;
+    margin-top: 10px;
+    color: #A5A9BC;
+    font-size: 13px;
+    letter-spacing: 0.3px;
+}
+
+/* Stream stats row */
+.stream-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.stream-stat {
+    font-size: 12px;
+    color: #A5A9BC;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 4px;
+}
+
+/* Upgrade card - same style */
+.upgrade-card {
+    background: linear-gradient(180deg, #151519 0%, #111114 100%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.upgrade-card:hover {
+    background: linear-gradient(180deg, #1B1B20 0%, #141418 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}

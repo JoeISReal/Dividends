@@ -1,0 +1,111 @@
+/* Adventure Capitalist Premium Upgrade Card - Refined */
+.upgrade-card-ac {
+    background: linear-gradient(to bottom, #2C2625, #1F1A19);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(255, 245, 229, 0.25);
+    /* Warm rim light */
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(31, 26, 25, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: transform 0.2s ease;
+    position: relative;
+}
+
+.upgrade-card-ac:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(31, 26, 25, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    z-index: 1;
+}
+
+.upgrade-icon-wrapper {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #4A4A52, #2a2a30);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+.upgrade-icon {
+    font-size: 28px;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
+}
+
+.upgrade-level-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: linear-gradient(to bottom, #F7D77E, #E5C56C);
+    color: #3B2A1B;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 11px;
+    border: 1px solid #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.upgrade-info {
+    flex: 1;
+}
+
+.upgrade-name {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 4px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.upgrade-desc {
+    font-size: 0.9rem;
+    color: #9aa0ad;
+    line-height: 1.3;
+}
+
+.upgrade-buy-btn {
+    background: linear-gradient(to bottom, #FFA85F, #FF8C30);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-weight: 800;
+    color: #3B2A1B;
+    cursor: pointer;
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4), 0 3px 0 #cc6a1b, 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.1s ease;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+    min-width: 100px;
+    text-align: center;
+    border: 1px solid #e07a28;
+}
+
+.upgrade-buy-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.5), 0 4px 0 #cc6a1b, 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.upgrade-buy-btn:active {
+    transform: translateY(3px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 #cc6a1b, 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.upgrade-cost {
+    font-size: 1.1rem;
+}
+
+.upgrade-buy-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    opacity: 0.8;
+    display: block;
+    margin-bottom: 2px;
+}

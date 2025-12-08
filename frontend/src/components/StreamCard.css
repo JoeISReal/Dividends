@@ -1,0 +1,203 @@
+/* Adventure Capitalist Premium Stream Card - Refined */
+.stream-card-ac {
+    background: linear-gradient(to bottom, #2C2625, #1F1A19);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(255, 245, 229, 0.25);
+    /* Warm rim light */
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 8px 24px rgba(31, 26, 25, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    /* Ensure full height in grid */
+}
+
+.stream-card-ac:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 12px 32px rgba(31, 26, 25, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    z-index: 1;
+}
+
+.stream-header-ac {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.icon-badge-ac {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4A4A52, #2a2a30);
+    border: 3px solid #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    flex-shrink: 0;
+}
+
+.stream-icon-ac {
+    font-size: 36px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.owned-count-ac {
+    position: absolute;
+    bottom: -8px;
+    right: -8px;
+    background: linear-gradient(to bottom, #F7D77E, #E5C56C);
+    color: #3B2A1B;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 14px;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    z-index: 2;
+}
+
+.stream-info-ac {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 6px;
+}
+
+.stream-name-ac {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+    letter-spacing: 0.5px;
+    min-height: 2.8rem;
+    /* Fixed height for 2 lines */
+    display: flex;
+    align-items: center;
+}
+
+.manager-badge-ac {
+    margin-left: 8px;
+    font-size: 16px;
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
+}
+
+.yield-wedge-ac {
+    background: linear-gradient(to bottom, #81D34A, #6cb33e);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-weight: 800;
+    color: #1F3310;
+    width: fit-content;
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-size: 0.95rem;
+    border: 1px solid #5a9632;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.timer-pill-ac {
+    background: #E8D6C3;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 700;
+    color: #3B2A1B;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    border: 1px solid #d4cbb3;
+}
+
+.progress-bar-ac {
+    height: 14px;
+    background: #151518;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.progress-fill-ac {
+    height: 100%;
+    background: linear-gradient(to bottom, #81D34A, #6cb33e);
+    transition: width 0.05s linear;
+    box-shadow: 0 0 10px rgba(129, 211, 74, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    position: relative;
+}
+
+/* Shine effect on progress bar */
+.progress-fill-ac::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.3) 0%, transparent 100%);
+}
+
+.buy-panel-ac {
+    background: linear-gradient(to bottom, #FFB36A, #FF9048);
+    border-radius: 12px;
+    padding: 16px;
+    font-weight: 800;
+    color: #3B2A1B;
+    text-align: center;
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4), 0 4px 0 #cc6a1b, 0 8px 12px rgba(0, 0, 0, 0.3);
+    /* 3D Button */
+    cursor: pointer;
+    transition: all 0.1s ease;
+    font-size: 1.15rem;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+    border: 1px solid #e07a28;
+    margin-top: auto;
+    /* Push to bottom if space allows */
+}
+
+.buy-panel-ac:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.5), 0 6px 0 #cc6a1b, 0 12px 16px rgba(0, 0, 0, 0.3);
+}
+
+.buy-panel-ac:active {
+    transform: translateY(4px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 #cc6a1b, 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.milestone-row-ac {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.milestone-ac {
+    background: #E8D6C3;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    color: #3B2A1B;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    border: 1px solid #d4cbb3;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.milestone-ac.done {
+    background: linear-gradient(to bottom, #F7D77E, #E5C56C);
+    color: #3B2A1B;
+    border: 1px solid #D4B65A;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+}

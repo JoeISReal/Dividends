@@ -1,0 +1,45 @@
+{
+  "playerId": "player1",
+  "balance": 0,
+  "yieldPerClick": 1,
+  "yieldPerSecond": 0,
+  "shareholderMultiplier": 1,
+  "streams": [
+    {
+      "id": "micro",
+      "name": "Microbags Miner",
+      "description": "Mine bags of coins",
+      "baseCost": 10,
+      "costMultiplier": 1.15,
+      "quantity": 0,
+      "productionTime": 3,
+      "baseYield": 0.5
+    },
+    {
+      "id": "chart",
+      "name": "Chart Whisperer",
+      "description": "Analyze the market",
+      "baseCost": 100,
+      "costMultiplier": 1.15,
+      "quantity": 0,
+      "productionTime": 5,
+      "baseYield": 10
+    },
+    {
+      "id": "frog",
+      "name": "Leverage Frog",
+      "description": "Leverage your trades",
+      "baseCost": 500,
+      "costMultiplier": 1.17,
+      "quantity": 0,
+      "productionTime": 8,
+      "baseYield": 50
+    }
+  ],
+  "upgrades": {},
+  "stats": {
+    "lifetimeYield": 0,
+    "totalClicks": 0
+  },
+  "lastTick": 1765183628670
+}
