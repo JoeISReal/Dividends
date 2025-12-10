@@ -4,21 +4,19 @@ export default function StreamCard({ stream, onBuy, buyAmount, onCollect }) {
     const [progress, setProgress] = useState(0);
     const intervalRef = useRef(null);
     const startTimeRef = useRef(null);
-    const onCollectRef = useRef(onCollect);
 
-    // Keep onCollect ref updated without triggering re-renders
-    useEffect(() => {
-        onCollectRef.current = onCollect;
-    }, [onCollect]);
+    const isAutomated = stream.hasManager && stream.owned > 0;
 
-    // Auto-produce if has manager
+    // Auto-produce animation (Visual Only)
     useEffect(() => {
+        // Clear any existing interval
         if (intervalRef.current) {
             clearInterval(intervalRef.current);
             intervalRef.current = null;
         }
 
-        if (!stream.hasManager || stream.owned === 0) {
+        // If not running, reset
+        if (!isAutomated) {
             setProgress(0);
             return;
         }
@@ -32,9 +30,7 @@ export default function StreamCard({ stream, onBuy, buyAmount, onCollect }) {
             setProgress(pct);
 
             if (pct >= 100) {
-                if (onCollectRef.current) {
-                    onCollectRef.current(stream.id);
-                }
+                // Loop animation
                 startTimeRef.current = Date.now();
                 setProgress(0);
             }
@@ -46,7 +42,7 @@ export default function StreamCard({ stream, onBuy, buyAmount, onCollect }) {
                 intervalRef.current = null;
             }
         };
-    }, [stream.hasManager, stream.owned, stream.baseTime, stream.id]);
+    }, [isAutomated, stream.baseTime]);
 
     // Manual click handler
     const handleClick = () => {
@@ -65,8 +61,12 @@ export default function StreamCard({ stream, onBuy, buyAmount, onCollect }) {
             if (pct >= 100) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
-                if (onCollectRef.current) {
-                    onCollectRef.current(stream.id);
+                // Only manual clicks trigger checking logic IF needed, 
+                // but for now we rely on simple click = 1 manual yield usually handled by parent?
+                // Actually parent calls onCollect on completion. 
+                // Manual collection is still allowed if valid.
+                if (onCollect) {
+                    onCollect(stream.id);
                 }
                 setProgress(0);
             }
@@ -74,14 +74,21 @@ export default function StreamCard({ stream, onBuy, buyAmount, onCollect }) {
     };
 
     const cost = Math.floor(stream.baseCost * Math.pow(stream.costScale, stream.owned));
-    const totalCost = buyAmount === 'MAX'
-        ? 999999999
-        : Array.from({ length: buyAmount }, (_, i) =>
-            Math.floor(stream.baseCost * Math.pow(stream.costScale, stream.owned + i))
-        ).reduce((a, b) => a + b, 0);
+
+    let totalCost = 0;
+    if (buyAmount === 'MAX') {
+        totalCost = 999999999; // Placeholder logic as in original
+    } else {
+        // Simple accurate summation
+        let currentCost = stream.baseCost * Math.pow(stream.costScale, stream.owned);
+        for (let i = 0; i < buyAmount; i++) {
+            totalCost += Math.floor(currentCost);
+            currentCost *= stream.costScale;
+        }
+    }
 
     const yps = calculateYPS(stream);
-    const nextUnlock = stream.unlocks.find(u => u.owned > stream.owned);
+    const nextUnlock = stream.unlocks && stream.unlocks.find(u => u.owned > stream.owned);
 
     return (
         <div className="stream-card" onClick={handleClick}>
@@ -93,6 +100,16 @@ export default function StreamCard({ stream, onBuy, buyAmount, onCollect }) {
                         {stream.name}
                         {stream.hasManager && <span style={{ marginLeft: 6 }}>👔</span>}
                     </div>
+                    {stream.description && (
+                        <div style={{
+                            fontSize: 11,
+                            color: 'rgba(255,255,255,0.5)',
+                            marginTop: 2,
+                            lineHeight: 1.3
+                        }}>
+                            {stream.description}
+                        </div>
+                    )}
                     <div className="stream-yield">${yps.toFixed(2)}/sec</div>
                 </div>
                 <div style={{ fontSize: 24, fontWeight: 700, color: "#F4F4F8" }}>
@@ -130,30 +147,20 @@ export default function StreamCard({ stream, onBuy, buyAmount, onCollect }) {
                 className="btn-buy"
                 onClick={(e) => { e.stopPropagation(); onBuy(stream.id, buyAmount); }}
             >
-                BUY x{buyAmount === 'MAX' ? 'MAX' : buyAmount} • ${totalCost.toLocaleString()}
+                BUY x{buyAmount === 'MAX' ? 'MAX' : buyAmount} • {buyAmount === 'MAX' ? 'MAX' : `$${totalCost.toLocaleString()}`}
             </button>
-
-            {/* Next Milestone */}
-            {nextUnlock && (
-                <div className="milestone-bar">
-                    Next: {nextUnlock.owned} → {nextUnlock.type === 'profit' ? '💰' : '⚡'} ×{nextUnlock.multiplier}
-                </div>
-            )}
-            {!nextUnlock && stream.owned > 0 && (
-                <div className="milestone-bar" style={{ color: "#3BFFB0" }}>
-                    ✓ Maxed!
-                </div>
-            )}
         </div>
     );
 }
 
 function calculateYPS(stream) {
     let mult = 1;
-    stream.unlocks.forEach(u => {
-        if (stream.owned >= u.owned && u.type === 'profit') {
-            mult *= u.multiplier;
-        }
-    });
+    if (stream.unlocks) {
+        stream.unlocks.forEach(u => {
+            if (stream.owned >= u.owned && u.type === 'profit') {
+                mult *= u.multiplier;
+            }
+        });
+    }
     return (stream.baseYield * stream.owned / stream.baseTime) * mult;
 }

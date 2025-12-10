@@ -1,21 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from './state/gameStore';
+import { calculateIncome } from './game/incomeEngineFixed';
+import useGameLoop from './game/useGameLoop';
+import { getStreamDescription, getUpgradeDescription } from './data/descriptions';
+
 import { AppShell } from './AppShell';
 import StreamCard from './components/StreamCard';
 import UpgradeCard from './components/UpgradeCard';
 import ManagersTab from './components/ManagersTab';
 import HelpTab from './components/HelpTab';
+import CommunityTab from './components/CommunityTab';
+import LeaderboardTab from './components/LeaderboardTab';
 import DegenArenaPage from './pages/DegenArenaPage';
+import TradeHistoryPage from './pages/TradeHistoryPage';
+import NotificationToast from './components/NotificationToast';
 
 export default function App() {
   // Zustand store hooks
   const balance = useGameStore((s) => s.balance);
   const yps = useGameStore((s) => s.yps);
-  const streams = useGameStore((s) => s.streams);
-  const managers = useGameStore((s) => s.managers);
-  const managerCosts = useGameStore((s) => s.managerCosts);
-  const upgrades = useGameStore((s) => s.upgrades);
-  const multipliers = useGameStore((s) => s.multipliers);
+  const streams = useGameStore((s) => s.streams || {});
+  const managers = useGameStore((s) => s.managers || {});
+  const managerCosts = useGameStore((s) => s.managerCosts || {});
+  const upgrades = useGameStore((s) => s.upgrades || {});
+  const multipliers = useGameStore((s) => s.multipliers || {});
 
   // Actions
   const buyStream = useGameStore((s) => s.buyStream);
@@ -26,31 +34,36 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('streams');
   const [buyAmount, setBuyAmount] = useState(1);
 
-  // Global YPS ticker - generates passive income
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const currentYps = useGameStore.getState().yps;
-      if (currentYps > 0) {
-        addBalance(currentYps / 10); // Smooth tick every 100ms
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [addBalance]);
+  // Core Game Loop (Passive Income + Offline Earnings)
+  useGameLoop(100);
 
   // Manager automation - hired managers auto-level streams
   useEffect(() => {
     const interval = setInterval(() => {
       const currentManagers = useGameStore.getState().managers;
-      Object.entries(currentManagers).forEach(([streamKey, isHired]) => {
-        if (isHired) {
-          buyStream(streamKey, 1);
-        }
-      });
+      if (currentManagers) {
+        Object.entries(currentManagers).forEach(([streamKey, isHired]) => {
+          if (isHired) {
+            buyStream(streamKey, 1);
+          }
+        });
+      }
     }, 1000); // Managers buy every second
 
     return () => clearInterval(interval);
   }, [buyStream]);
+
+  // Leaderboard Auto-Sync (Every 10s)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const auth = useGameStore.getState().auth;
+      if (auth.isAuthenticated) {
+        useGameStore.getState().syncScore();
+      }
+    }, 10000); // 10 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Stream purchase handler
   const handleBuyStream = (streamKey) => {
@@ -125,10 +138,12 @@ export default function App() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
           {Object.entries(streams).map(([key, stream]) => {
+            const desc = getStreamDescription(key);
             // Map stream data to format expected by StreamCard
             const streamData = {
               id: key,
-              name: key.charAt(0).toUpperCase() + key.slice(1),
+              name: desc.name,
+              description: desc.description,
               icon: getStreamIcon(key),
               owned: stream.level,
               baseCost: stream.baseCost,
@@ -154,13 +169,17 @@ export default function App() {
     );
   } else if (activeTab === 'managers') {
     // Convert managers to array format for ManagersTab
-    const managersArray = Object.entries(managers).map(([key, isHired]) => ({
-      id: key,
-      name: key.charAt(0).toUpperCase() + key.slice(1) + ' Manager',
-      cost: managerCosts[key],
-      hired: isHired,
-      automatesStream: key,
-    }));
+    const managersArray = Object.entries(managers).map(([key, isHired]) => {
+      const desc = getStreamDescription(key);
+      return {
+        id: key,
+        name: desc.managerName,
+        description: desc.managerDescription,
+        cost: managerCosts[key],
+        hired: isHired,
+        automatesStream: key,
+      };
+    });
 
     centerContent = (
       <ManagersTab
@@ -172,19 +191,22 @@ export default function App() {
     );
   } else if (activeTab === 'upgrades') {
     // Create upgrade catalog
+    const clickDesc = getUpgradeDescription('click');
+    const globalDesc = getUpgradeDescription('global');
+
     const upgradesCatalog = [
       {
         key: 'click',
-        name: 'Faster Clicks',
-        description: 'Double your click yield',
+        name: clickDesc.name,
+        desc: clickDesc.description,
         cost: Math.floor(500 * Math.pow(2, upgrades.clickLevel)),
         level: upgrades.clickLevel,
         effect: `x${multipliers.click}`,
       },
       {
         key: 'global',
-        name: 'R&D Investment',
-        description: 'Increase all stream profits by 10%',
+        name: globalDesc.name,
+        desc: globalDesc.description,
         cost: Math.floor(50000 * Math.pow(1.5, upgrades.globalLevel)),
         level: upgrades.globalLevel,
         effect: `x${multipliers.global.toFixed(2)}`,
@@ -212,56 +234,23 @@ export default function App() {
     centerContent = <DegenArenaPage />;
     liveDegens = dummyDegens;
   } else if (activeTab === 'leaderboard') {
-    centerContent = (
-      <>
-        <div className="main-header">
-          <div className="main-title">🏆 Leaderboard</div>
-        </div>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '400px',
-          gap: '20px'
-        }}>
-          <div style={{
-            fontSize: '72px',
-            opacity: 0.3
-          }}>🏆</div>
-          <div style={{
-            fontSize: '32px',
-            fontWeight: 700,
-            background: 'linear-gradient(135deg, var(--gold-light), var(--gold))',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
-          }}>
-            Coming Soon
-          </div>
-          <div style={{
-            fontSize: '16px',
-            color: 'var(--text-low)',
-            textAlign: 'center',
-            maxWidth: '400px'
-          }}>
-            Compete with other degens for the top spot!<br />
-            Track your rank, biggest wins, and total profits.
-          </div>
-        </div>
-      </>
-    );
+    centerContent = <LeaderboardTab />;
+  } else if (activeTab === 'community') {
+    centerContent = <CommunityTab />;
   } else {
     centerContent = <HelpTab />;
   }
 
   return (
-    <AppShell
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      centerContent={centerContent}
-      liveDegens={liveDegens}
-    />
+    <>
+      <AppShell
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        centerContent={centerContent}
+        liveDegens={liveDegens}
+      />
+      <NotificationToast />
+    </>
   );
 }
 

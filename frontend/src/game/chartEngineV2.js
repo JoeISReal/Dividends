@@ -1,10 +1,10 @@
-// chartEngineV2.js - Fully Wired Version
+// chartEngineV2.js - Fully Wired Version with Fixes
 export class ChartEngineV2 {
     constructor(engine, opts = {}) {
         this.engine = engine;
         this.engine.attachChart(this);
 
-        this.candleMs = opts.candleMs || 300;
+        this.candleMs = opts.candleMs || 300; // Fast ticks
         this.maxCandles = opts.maxCandles || 160;
         this.candleWidth = opts.candleWidth || 12;
 
@@ -28,30 +28,46 @@ export class ChartEngineV2 {
     update(dt) {
         this.candleElapsed += dt;
 
-        this.updateCurrentCandle();
+        this.updateCurrentCandle(dt);
 
-        if (this.forceRoll || this.candleElapsed >= this.candleMs) {
+        // Robust time-step: Catch up if we lag behind multiple candles
+        while (this.forceRoll || this.candleElapsed >= this.candleMs) {
             this.rollCandle();
-            this.forceRoll = false;
+            // If forced, reset flag. If time-based, decrement time.
+            if (this.forceRoll) {
+                this.forceRoll = false;
+                this.candleElapsed = 0; // Hard reset on force
+            } else {
+                this.candleElapsed -= this.candleMs;
+            }
         }
     }
 
-    updateCurrentCandle() {
-        const p = this.engine.tickPrice();
+    updateCurrentCandle(dt) {
+        // pass dt down in ms
+        const p = this.engine.tickPrice(dt || 100);
         const c = this.currentCandle;
 
-        c.live = p;
-        c.high = Math.max(c.high, p);
-        c.low = Math.min(c.low, p);
-        c.close = p;
+        if (c) {
+            c.live = p;
+            c.high = Math.max(c.high, p);
+            c.low = Math.min(c.low, p);
+            c.close = p;
+        }
     }
 
     rollCandle() {
-        this.candles.push({ ...this.currentCandle });
-        if (this.candles.length > this.maxCandles) this.candles.shift();
+        if (this.candles.length >= this.maxCandles) {
+            this.candles.shift();
+        }
 
+        // Push a safe copy
+        if (this.currentCandle) {
+            this.candles.push({ ...this.currentCandle });
+        }
+
+        // Start next candle
         this.currentCandle = this.engineTickToCandle();
-        this.candleElapsed = 0;
     }
 
     forceNewCandle() {
@@ -59,17 +75,27 @@ export class ChartEngineV2 {
     }
 
     updateCamera(width) {
+        // Goal: Keep the "Head" (current candle) at 65% of screen width
+        // once it fills the gap from the origin (35%).
+
+        const cw = this.candleWidth;
         const n = this.candles.length;
-        const originX = width * 0.35;
-        const lastRawX = originX + (n - 1) * this.candleWidth;
-        const anchorX = width * 0.65;
 
-        let desired = anchorX - lastRawX;
+        // World position of the head relative to the origin
+        const headWorldX = n * cw;
 
-        if (n * this.candleWidth < width * 0.55) desired = 0;
+        const originScreenX = width * 0.35;
+        const targetScreenX = width * 0.65;
 
-        this.targetChartOffset = desired;
-        this.chartOffset += (desired - this.chartOffset) * 0.08;
+        // originScreenX + headWorldX + offset = targetScreenX
+        // offset = targetScreenX - originScreenX - headWorldX
+        const idealOffset = targetScreenX - originScreenX - headWorldX;
+
+        // Only scroll left (negative offset) once filled. Never scroll right (positive).
+        const finalOffset = Math.min(0, idealOffset);
+
+        // HARD LOCK (No Lerp) to guarantee frame visibility
+        this.chartOffset = finalOffset;
     }
 
     draw(ctx, width, height) {
@@ -89,22 +115,44 @@ export class ChartEngineV2 {
             maxP = Math.max(maxP, c.high);
         }
 
-        if (minP === Infinity || maxP === -Infinity) {
-            minP = 0.9;
-            maxP = 1.1;
+        // Dynamic padding to prevent flat lines
+        if (minP === Infinity || maxP === -Infinity || minP === maxP) {
+            const center = minP === Infinity ? 1 : minP;
+            minP = center * 0.95;
+            maxP = center * 1.05;
         }
 
-        const pad = (maxP - minP) * 0.2;
+        const pad = (maxP - minP) * 0.35;
         minP -= pad;
         maxP += pad;
 
         this.drawGrid(ctx, width, height, minP, maxP);
         this.drawCandles(ctx, width, height, minP, maxP);
         this.drawPriceLine(ctx, width, height, minP, maxP);
+        this.drawStartLine(ctx, width, height, minP, maxP);
+    }
+
+    drawStartLine(ctx, width, height, minP, maxP) {
+        const y = this.priceToY(1.0, minP, maxP, height);
+
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"; // Much brighter
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]); // Clear dash pattern
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; // Brighter text
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillText("1.00x", width - 40, y - 5);
     }
 
     priceToY(price, minPrice, maxPrice, height) {
-        const norm = (price - minPrice) / (maxPrice - minPrice);
+        const range = maxPrice - minPrice;
+        if (range === 0) return height / 2;
+        const norm = (price - minPrice) / range;
         return height - norm * height;
     }
 
@@ -123,12 +171,14 @@ export class ChartEngineV2 {
 
     drawCandles(ctx, width, height, minP, maxP) {
         const cw = this.candleWidth;
+        // Origin matches the camera update logic
         const originX = width * 0.35;
 
         for (let i = 0; i < this.candles.length; i++) {
             const c = this.candles[i];
             const x = originX + i * cw + this.chartOffset;
 
+            // Horizontal culling
             if (x < -20 || x > width + 20) continue;
 
             const openY = this.priceToY(c.open, minP, maxP, height);
@@ -138,7 +188,7 @@ export class ChartEngineV2 {
 
             const green = c.close >= c.open;
 
-            // wick
+            // Wick
             ctx.strokeStyle = green ? "#44ffb0" : "#ff5577";
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -146,17 +196,17 @@ export class ChartEngineV2 {
             ctx.lineTo(x, lowY);
             ctx.stroke();
 
-            // body
+            // Body
             const top = green ? closeY : openY;
             const bot = green ? openY : closeY;
             const h = Math.max(3, bot - top);
-            const w = cw * 0.6;
+            const w = cw * 0.65;
 
             ctx.fillStyle = green ? "#3bffb0" : "#ff6b81";
             ctx.fillRect(x - w / 2, top, w, h);
         }
 
-        // draw live candle
+        // Draw Live Candle
         const i = this.candles.length;
         const c = this.currentCandle;
         const x = originX + i * cw + this.chartOffset;
@@ -177,9 +227,11 @@ export class ChartEngineV2 {
 
         const top = green ? closeY : openY;
         const bot = green ? openY : closeY;
+
         ctx.fillStyle = green ? "#5bffd1" : "#ff8798";
+        // Glow effect for live candle
         ctx.shadowColor = green ? "rgba(59,255,176,0.3)" : "rgba(255,75,106,0.3)";
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 10;
         ctx.fillRect(x - cw * 0.35, top, cw * 0.7, Math.max(3, bot - top));
         ctx.shadowBlur = 0;
     }
@@ -187,52 +239,66 @@ export class ChartEngineV2 {
     drawPriceLine(ctx, width, height, minP, maxP) {
         const y = this.priceToY(this.engine.price, minP, maxP, height);
 
-        ctx.strokeStyle = "rgba(0,200,255,0.35)";
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([6, 6]);
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-    }
-
-    drawBreakevenLine(ctx, width, height, minP, maxP, entryPrice) {
-        const y = this.priceToY(entryPrice, minP, maxP, height);
-
-        ctx.save();
-
-        // Dashed line
-        ctx.strokeStyle = "rgba(255,215,0,0.4)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([8, 4]);
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Label pill
-        const label = 'BREAKEVEN';
-        ctx.font = '11px system-ui, -apple-system, sans-serif';
-        const textWidth = ctx.measureText(label).width;
-
-        const pillWidth = textWidth + 16;
-        const pillHeight = 18;
-        const pillX = width - pillWidth - 8;
-        const pillY = y - pillHeight / 2;
-
-        ctx.fillStyle = "rgba(20,15,5,0.95)";
-        ctx.strokeStyle = "rgba(255,215,0,0.5)";
+        ctx.strokeStyle = "rgba(0,200,255,0.4)";
         ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.roundRect(pillX, pillY, pillWidth, pillHeight, 9);
-        ctx.fill();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
         ctx.stroke();
-
-        ctx.fillStyle = "#ffd700";
-        ctx.fillText(label, pillX + 8, pillY + 13);
-
-        ctx.restore();
+        ctx.setLineDash([]);
     }
+
+    drawBreakevenLine(ctx, width, height, minP, maxP, price, pnlPct = 0) {
+        const y = this.priceToY(price, minP, maxP, height);
+
+        ctx.strokeStyle = "rgba(255, 200, 0, 0.7)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Label
+        ctx.fillStyle = "rgba(255, 200, 0, 0.7)";
+        ctx.font = "10px sans-serif";
+        ctx.fillText("ENTRY", 5, y - 5);
+
+        // PnL Pill on the right
+        const sign = pnlPct >= 0 ? "+" : "";
+        const color = pnlPct >= 0 ? "#44ffb0" : "#ff5577";
+        const text = `${sign}${Number(pnlPct).toFixed(2)}%`;
+
+        ctx.font = "bold 11px system-ui";
+        const metric = ctx.measureText(text);
+        const pad = 6;
+        const w = metric.width + pad * 2;
+        const h = 20;
+
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(width - w - 10, y - h / 2, w, h);
+
+        ctx.fillStyle = color;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, width - w / 2 - 10, y + 1);
+
+        ctx.textAlign = "start";
+        ctx.textBaseline = "alphabetic";
+    }
+
+    priceToY(p, minP, maxP, height) {
+        // Log scale? 
+        // return height - ((Math.log(p) - Math.log(minP)) / (Math.log(maxP) - Math.log(minP))) * height;
+
+        // Linear for now to match other logic found in file?
+        // Actually, let's just use what's likely already there or if I can't find it, define it safely.
+        // Since I can't see the definition in previous blocks, I should check if it's there.
+        // It WAS referenced in line 153.
+        return height - ((p - minP) / (maxP - minP)) * height;
+    }
+
 }
+

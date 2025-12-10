@@ -17,7 +17,18 @@ export default function ManagersTab({ managers, ownedManagers, balance, onBuy })
                                 <div className="manager-icon">👔</div>
                                 <div>
                                     <div className="manager-name">{mgr.name}</div>
-                                    <div className="manager-stream">Automates: {mgr.streamId}</div>
+                                    {mgr.description && (
+                                        <div style={{
+                                            fontSize: 11,
+                                            color: 'rgba(255,255,255,0.5)',
+                                            marginTop: 2,
+                                            marginBottom: 4,
+                                            lineHeight: 1.3
+                                        }}>
+                                            {mgr.description}
+                                        </div>
+                                    )}
+                                    <div className="manager-stream">Automates: {mgr.automatesStream}</div>
                                 </div>
                             </div>
 

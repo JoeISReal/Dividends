@@ -1,11 +1,19 @@
 import React, { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
-import { TradingEngine } from '../game/tradingEngine';
-import { ChartEngineV2 } from '../game/chartEngineV2';
+import { getChartEngines } from '../game/chartSingleton';
+import { useGameStore } from '../state/gameStore';
 
 const DegenChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
     const canvasRef = useRef(null);
     const tradingRef = useRef(null);
     const chartRef = useRef(null);
+
+    // XP Action
+    const awardXP = useGameStore(s => s.awardXP);
+    const awardXPRef = useRef(awardXP);
+
+    useEffect(() => {
+        awardXPRef.current = awardXP;
+    }, [awardXP]);
 
     // Expose applyTrade to parent
     useImperativeHandle(ref, () => ({
@@ -26,11 +34,17 @@ const DegenChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
     }, [onPriceUpdate, activePosition]);
 
     useEffect(() => {
-        const trading = new TradingEngine();
-        const chart = new ChartEngineV2(trading);
+        // Get singleton engines - they persist across tab switches
+        const { trading, chart } = getChartEngines();
 
         tradingRef.current = trading;
         chartRef.current = chart;
+
+        // Inject XP Callback
+        // We use a ref wrapper to always call the latest zustand action
+        trading.onAwardXP = (amount) => {
+            if (awardXPRef.current) awardXPRef.current(amount);
+        };
 
         const canvas = canvasRef.current;
         const ctx = canvas.getContext("2d");
@@ -82,10 +96,12 @@ const DegenChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
                 maxP += pad;
 
                 // Draw breakeven line at entry price
-                chart.drawBreakevenLine(ctx, rect.width, rect.height, minP, maxP, pos.entryPrice);
-
+                // Calculate PnL % for display on line
                 const currentPnL = pos.currentValue - pos.betAmount;
-                const pnlPercent = ((currentPnL / pos.betAmount) * 100).toFixed(2);
+                const pnlPercent = ((currentPnL / pos.betAmount) * 100);
+
+                chart.drawBreakevenLine(ctx, rect.width, rect.height, minP, maxP, pos.entryPrice, pnlPercent);
+
                 const multiplier = (pos.currentValue / pos.betAmount).toFixed(3);
                 const isProfit = currentPnL >= 0;
 
@@ -127,7 +143,7 @@ const DegenChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
                 ctx.fillStyle = isProfit ? '#3bffb0' : '#ff6b81';
                 ctx.font = '600 13px system-ui, -apple-system, sans-serif';
                 ctx.fillText(
-                    `${isProfit ? '+' : ''}$${currentPnL.toFixed(2)} (${pnlPercent}%)`,
+                    `${isProfit ? '+' : ''}$${currentPnL.toFixed(2)} (${Number(pnlPercent).toFixed(2)}%)`,
                     24,
                     76
                 );

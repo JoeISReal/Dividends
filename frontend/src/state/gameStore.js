@@ -2,11 +2,15 @@
 // Unified game state management with Zustand
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { calculateIncome } from '../game/incomeEngineFixed';
+
 
 export const useGameStore = create(
     persist(
         (set, get) => ({
 
+            /* ========================
+               CORE ECONOMY
             /* ========================
                CORE ECONOMY
             ======================== */
@@ -15,6 +19,16 @@ export const useGameStore = create(
             yieldPerClick: 1,
             totalClicks: 0,
             lifetimeYield: 0,
+
+            /* ========================
+               AUTH & LEADERBOARD
+            ======================== */
+            auth: {
+                user: null, // { handle: string }
+                isAuthenticated: false
+            },
+            leaderboard: [],
+            leaderboardLoading: false,
 
             /* ========================
                STREAMS
@@ -74,7 +88,29 @@ export const useGameStore = create(
                 lastExit: null,
                 lastPnL: 0,
                 totalPnL: 0,
+                stability: 100,
+                maxStability: 100,
+                lastStabilityUpdatePrice: 1.0,
             },
+
+            tradeHistory: [],
+
+            /* ========================
+               NOTIFICATIONS
+            ======================== */
+            notification: null, // { message, type, id }
+
+            showNotification: (message, type = 'info') => {
+                set({
+                    notification: {
+                        message,
+                        type,
+                        id: Date.now()
+                    }
+                });
+            },
+
+            clearNotification: () => set({ notification: null }),
 
             /* ========================
                STATS
@@ -137,11 +173,9 @@ export const useGameStore = create(
                 stream.level += quantity;
 
                 // Recalculate YPS
-                const baseYps = Object.values(state.streams).reduce(
-                    (sum, s) => sum + s.level * s.baseYps,
-                    0
-                );
-                const realYps = baseYps * state.multipliers.prestige * state.multipliers.global;
+                // Create a temporary state projection for calculation
+                const tempState = { ...state, streams: { ...state.streams } };
+                const realYps = calculateIncome(tempState, 1);
 
                 set({
                     balance: state.balance - totalCost,
@@ -156,6 +190,7 @@ export const useGameStore = create(
                 return true;
             },
 
+
             /* ========================
                MANAGER SYSTEM
             ======================== */
@@ -167,16 +202,33 @@ export const useGameStore = create(
                 if (!cost || state.managers[streamKey]) return false;
                 if (state.balance < cost) return false;
 
-                set({
+                const newState = {
+                    ...state,
                     balance: state.balance - cost,
                     managers: {
                         ...state.managers,
                         [streamKey]: true,
                     },
+                    streams: {
+                        ...state.streams,
+                        [streamKey]: {
+                            ...state.streams[streamKey],
+                            hasManager: true // Ensure stream knows it has manager
+                        }
+                    }
+                };
+
+                // Recalculate YPS now that manager is hired
+                const newYps = calculateIncome(newState, 1);
+
+                set({
+                    ...newState,
+                    yps: newYps
                 });
 
                 return true;
             },
+
 
             /* ========================
                UPGRADE SYSTEM
@@ -213,20 +265,13 @@ export const useGameStore = create(
 
                     const newGlobalMult = state.multipliers.global * 1.1;
 
-                    // Recalculate YPS with new multiplier
-                    const baseYps = Object.values(state.streams).reduce(
-                        (sum, s) => sum + s.level * s.baseYps,
-                        0
-                    );
-                    const realYps = baseYps * state.multipliers.prestige * newGlobalMult;
-
-                    set({
+                    const nextState = {
+                        ...state,
                         balance: state.balance - cost,
                         multipliers: {
                             ...state.multipliers,
                             global: newGlobalMult,
                         },
-                        yps: realYps,
                         upgrades: {
                             ...state.upgrades,
                             globalLevel: state.upgrades.globalLevel + 1,
@@ -235,9 +280,18 @@ export const useGameStore = create(
                             ...state.stats,
                             totalUpgradesBought: state.stats.totalUpgradesBought + 1,
                         },
+                    };
+
+                    const realYps = calculateIncome(nextState, 1);
+
+                    set({
+                        ...nextState,
+                        yps: realYps
                     });
+
                     return true;
                 }
+
 
                 return false;
             },
@@ -303,9 +357,19 @@ export const useGameStore = create(
                DEGEN ARENA INTEGRATION
             ======================== */
 
-            applyArenaResult: (pnl) => {
+            applyArenaResult: (pnl, details = {}) => {
                 const state = get();
                 const isWin = pnl > 0;
+
+                const newTrade = {
+                    timestamp: Date.now(),
+                    pnl: pnl,
+                    betAmount: details.betAmount || 0,
+                    entryPrice: details.entryPrice || 0,
+                    exitPrice: details.exitPrice || 0,
+                    multiplier: details.multiplier || 1,
+                    isWin: isWin
+                };
 
                 set({
                     balance: state.balance + pnl,
@@ -314,27 +378,94 @@ export const useGameStore = create(
                         lastExit: Date.now(),
                         lastPnL: pnl,
                         totalPnL: state.arena.totalPnL + pnl,
+                        // Ensure stability is preserved or updated elsewhere
+                        stability: state.arena.stability,
+                        maxStability: state.arena.maxStability,
+                        lastStabilityUpdatePrice: state.arena.lastStabilityUpdatePrice
                     },
                     stats: {
                         ...state.stats,
                         totalArenaTradesWon: state.stats.totalArenaTradesWon + (isWin ? 1 : 0),
                         totalArenaTradesLost: state.stats.totalArenaTradesLost + (isWin ? 0 : 1),
                     },
+                    tradeHistory: [...state.tradeHistory, newTrade],
                 });
             },
 
-            setArenaEntry: (amount) => {
+            setArenaEntry: (amount, currentPrice = 1.0) => {
                 set({
                     arena: {
                         ...get().arena,
                         lastEntry: amount,
+                        stability: 100,
+                        maxStability: 100,
+                        lastStabilityUpdatePrice: currentPrice,
                     },
                 });
+            },
+
+            updateArenaStability: (currentPrice) => {
+                const state = get();
+                const { stability, maxStability, lastStabilityUpdatePrice } = state.arena;
+
+                if (stability <= 0) return 'busted';
+
+                let newStability = stability;
+                const lastPrice = lastStabilityUpdatePrice || 1.0;
+                const diff = (currentPrice - lastPrice) / lastPrice;
+
+                // Rug damage
+                if (diff <= -0.025) {
+                    // Large rug
+                    newStability -= 25 + Math.floor(Math.random() * 15); // 25-40 damage
+                } else if (diff <= -0.01) {
+                    // Small dip
+                    newStability -= 10;
+                }
+
+                // Pump recovery bonus
+                if (diff >= 0.02) {
+                    newStability += 8;
+                }
+
+                // Optional: Slow regeneration (low volatility)
+                if (Math.abs(diff) < 0.005) {
+                    newStability += 2;
+                }
+
+                // Clamp values
+                if (newStability > maxStability) newStability = maxStability;
+                if (newStability < 0) newStability = 0;
+
+                // Update state
+                set({
+                    arena: {
+                        ...state.arena,
+                        stability: newStability,
+                        lastStabilityUpdatePrice: currentPrice,
+                    }
+                });
+
+                if (newStability <= 0) return 'busted';
+                return 'ok';
             },
 
             /* ========================
                UTILITY
             ======================== */
+
+            setYPS: (val) => set({ yps: val }),
+
+            incrementStat: (key, val = 1) => {
+                const state = get();
+                set({
+                    stats: {
+                        ...state.stats,
+                        [key]: (state.stats[key] || 0) + val
+                    }
+                });
+            },
+
 
             resetGame: () => {
                 set({
@@ -343,6 +474,12 @@ export const useGameStore = create(
                     yieldPerClick: 1,
                     totalClicks: 0,
                     lifetimeYield: 0,
+
+                    // Reset XP? Maybe keep it? strict reset for now
+                    xp: 0,
+                    level: 1,
+                    xpToNext: 1000,
+
                     streams: {
                         shitpost: { level: 0, baseCost: 10, baseYps: 1 },
                         engagement: { level: 0, baseCost: 100, baseYps: 5 },
@@ -368,11 +505,18 @@ export const useGameStore = create(
                         clickLevel: 0,
                         globalLevel: 0,
                     },
+                    socials: {
+                        twitter: false,
+                        discord: false
+                    },
                     arena: {
                         lastEntry: null,
                         lastExit: null,
                         lastPnL: 0,
                         totalPnL: 0,
+                        stability: 100,
+                        maxStability: 100,
+                        lastStabilityUpdatePrice: 1.0,
                     },
                     stats: {
                         totalStreamsPurchased: 0,
@@ -382,6 +526,117 @@ export const useGameStore = create(
                         totalArenaTradesLost: 0,
                     },
                 });
+            },
+
+            /* ========================
+               SOCIALS
+            ======================== */
+            socials: {
+                twitter: false,
+                discord: false
+            },
+
+            claimSocialReward: (platform) => {
+                const state = get();
+                if (state.socials[platform]) return false; // Already claimed
+
+                // Reward amounts
+                const rewards = {
+                    twitter: 1000000, // $1M
+                    discord: 1000000  // $1M
+                };
+
+                const reward = rewards[platform] || 0;
+                if (reward === 0) return false;
+
+                set({
+                    balance: state.balance + reward,
+                    socials: {
+                        ...state.socials,
+                        [platform]: true
+                    }
+                });
+                return reward;
+            },
+
+            /* ========================
+               XP SYSTEM
+            ======================== */
+            xp: 0,
+            level: 1,
+            xpToNext: 1000,
+
+            awardXP: (amount) => {
+                const state = get();
+                const currentXP = state.xp + amount;
+
+                // Simple Leveling: 1000 XP per level flat for now, or use formula
+                // Level = 1 + floor(XP / 1000)
+                const newLevel = 1 + Math.floor(currentXP / 1000);
+                const nextLevelXP = newLevel * 1000;
+                const dist = nextLevelXP - currentXP;
+
+                set({
+                    xp: currentXP,
+                    level: newLevel,
+                    xpToNext: dist
+                });
+            },
+
+            /* ========================
+               LEADERBOARD ACTIONS
+            ======================== */
+            login: async (handle) => {
+                try {
+                    const res = await fetch('http://localhost:3001/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ handle })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        set({
+                            auth: { user: data.user, isAuthenticated: true }
+                        });
+                        return true;
+                    }
+                } catch (e) {
+                    console.error("Login failed (Is backend running?)", e);
+                }
+                return false;
+            },
+
+            syncScore: async () => {
+                const state = get();
+                if (!state.auth.isAuthenticated) return;
+
+                try {
+                    await fetch('http://localhost:3001/api/score', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            handle: state.auth.user.handle.replace(/^@/, ''), // Sanitize just in case
+                            balance: state.balance,
+                            lifetimeYield: state.lifetimeYield
+                        })
+                    });
+                } catch (e) {
+                    console.error("Score sync failed", e);
+                }
+            },
+
+            fetchLeaderboard: async () => {
+                set({ leaderboardLoading: true });
+                try {
+                    const res = await fetch('http://localhost:3001/api/leaderboard');
+                    if (res.ok) {
+                        const data = await res.json();
+                        set({ leaderboard: data });
+                    }
+                } catch (e) {
+                    console.error("Leaderboard fetch failed", e);
+                }
+                set({ leaderboardLoading: false });
             },
 
         }),

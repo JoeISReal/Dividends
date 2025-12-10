@@ -1,0 +1,25 @@
+            hireManager: (streamKey) => {
+                const state = get();
+                const cost = state.managerCosts[streamKey];
+
+                if (!cost || state.managers[streamKey]) return false;
+                if (state.balance < cost) return false;
+
+                // Recalculate YPS with this new manager
+                const baseYps = Object.entries(state.streams).reduce(
+                    (sum, [key, s]) => (key === streamKey || state.managers[key]) ? sum + s.level * s.baseYps : sum,
+                    0
+                );
+                const realYps = baseYps * state.multipliers.prestige * state.multipliers.global;
+
+                set({
+                    balance: state.balance - cost,
+                    managers: {
+                        ...state.managers,
+                        [streamKey]: true,
+                    },
+                    yps: realYps,
+                });
+
+                return true;
+            },

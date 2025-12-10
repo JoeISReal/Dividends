@@ -9,6 +9,7 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
     const lifetimeYield = useGameStore((s) => s.lifetimeYield);
     const totalClicks = useGameStore((s) => s.totalClicks);
     const yieldPerClick = useGameStore((s) => s.yieldPerClick);
+    const clickMultiplier = useGameStore((s) => s.multipliers.click);
     const prestigeMultiplier = useGameStore((s) => s.multipliers.prestige);
 
     // Actions
@@ -18,6 +19,8 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
     const handleMine = () => {
         registerClick();
     };
+
+    const effectiveClickYield = yieldPerClick * clickMultiplier;
 
     const handlePrestige = () => {
         if (confirm("Prestige: reset streams for a shareholder multiplier. Confirm?")) {
@@ -66,6 +69,7 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
                         { id: "upgrades", label: "Upgrades", icon: "⚡" },
                         { id: "degen-arena", label: "Degen Arena", icon: "🎰" },
                         { id: "leaderboard", label: "Leaderboard", icon: "🏆" },
+                        { id: "community", label: "Community", icon: "🐦" },
                         { id: "help", label: "Help", icon: "❓" },
                     ].map(item => (
                         <div
@@ -83,7 +87,7 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
 
                 <div className="nav-card">
                     <button className="btn-primary" style={{ width: "100%" }} onClick={handleMine}>
-                        FARM (+{yieldPerClick})
+                        FARM (+{effectiveClickYield})
                     </button>
                 </div>
 

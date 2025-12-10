@@ -144,6 +144,33 @@ export default function BetPanel({ onBuy, onSell, activePosition, balance }) {
                         </button>
                     ))}
                 </div>
+
+                {/* Custom Amount Input */}
+                <div style={{ marginTop: 10 }}>
+                    <input
+                        type="number"
+                        placeholder="Or enter custom amount..."
+                        value={selectedAmount}
+                        onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setSelectedAmount(Math.max(0, val));
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            borderRadius: 8,
+                            border: '1px solid rgba(91,225,255,0.3)',
+                            background: 'rgba(255,255,255,0.05)',
+                            color: '#5be1ff',
+                            fontSize: 14,
+                            fontWeight: 600,
+                            outline: 'none',
+                            transition: 'all 0.2s ease',
+                            fontFamily: 'inherit'
+                        }}
+                    />
+                </div>
             </div>
 
             {/* Total Bet Display */}
