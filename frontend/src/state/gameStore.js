@@ -640,7 +640,6 @@ export const useGameStore = create(
 
             login: async (handle) => {
                 try {
-                    // Use relative path for Vercel functions
                     // Use relative path for Vercel functions, or absolute for Render
                     const res = await fetch(`${API_BASE}/api/auth/login`, {
                         method: 'POST',
@@ -655,11 +654,39 @@ export const useGameStore = create(
 
                     const data = await res.json();
                     if (data.success) {
-                        set({
-                            auth: { user: data.user, isAuthenticated: true },
-                            // Optimistically set level from DB if available
-                            level: data.user.level || 1,
-                        });
+                        const u = data.user;
+
+                        // 1. CLEAR OLD STATE (Essential for wallet switching)
+                        get().resetGame();
+
+                        // 2. Hydrate Basic Stats
+                        const patch = {
+                            auth: { user: u, isAuthenticated: true },
+                            balance: u.balance || 0,
+                            lifetimeYield: u.lifetimeYield || 0,
+                            level: u.level || 1,
+                        };
+
+                        // 3. Hydrate Streams (Merge Levels)
+                        const currentStreams = get().streams; // Fresh from resetGame
+                        const newStreams = { ...currentStreams };
+
+                        if (u.streams) {
+                            Object.entries(u.streams).forEach(([key, lvl]) => {
+                                if (newStreams[key]) {
+                                    newStreams[key] = { ...newStreams[key], level: lvl };
+                                }
+                            });
+                        }
+                        patch.streams = newStreams;
+
+                        // 4. Recalculate YPS based on hydrated streams
+                        const tempState = { ...get(), ...patch };
+                        patch.yps = calculateIncome(tempState, 1);
+
+                        // 5. Apply State
+                        set(patch);
+
                         return { success: true };
                     }
                     return { success: false, error: data.error || "Unknown server error" };
