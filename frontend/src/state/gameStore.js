@@ -612,27 +612,53 @@ export const useGameStore = create(
                 if (!state.auth.isAuthenticated) return;
 
                 try {
-                    await fetch('/api/score', {
+                    // Unified call: Send Score -> Get Leaderboard
+                    const res = await fetch('/api/sync', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            handle: state.auth.user.handle.replace(/^@/, ''), // Sanitize just in case
+                            handle: state.auth.user.handle.replace(/^@/, ''),
                             balance: state.balance,
                             lifetimeYield: state.lifetimeYield
                         })
                     });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Update leaderboard immediately from response
+                        if (data.leaderboard) {
+                            set({ leaderboard: data.leaderboard });
+                        }
+                    }
                 } catch (e) {
                     console.error("Score sync failed", e);
                 }
             },
 
             fetchLeaderboard: async () => {
+                const state = get();
                 set({ leaderboardLoading: true });
                 try {
-                    const res = await fetch('/api/leaderboard');
+                    // Even for fetching, we can "ping" with current stats if auth, 
+                    // or just send empty/partial to just read. 
+                    // Let's send current stats if we have them to keep "User alive"
+
+                    const payload = {};
+                    if (state.auth.isAuthenticated) {
+                        payload.handle = state.auth.user.handle.replace(/^@/, '');
+                        payload.balance = state.balance;
+                        payload.lifetimeYield = state.lifetimeYield;
+                    }
+
+                    const res = await fetch('/api/sync', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
                     if (res.ok) {
                         const data = await res.json();
-                        set({ leaderboard: data });
+                        set({ leaderboard: data.leaderboard });
                     }
                 } catch (e) {
                     console.error("Leaderboard fetch failed", e);
