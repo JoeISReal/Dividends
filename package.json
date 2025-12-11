@@ -2,6 +2,9 @@
     "name": "dividends-root",
     "version": "1.0.0",
     "private": true,
+    "scripts": {
+        "dev": "node api/index.js"
+    },
     "engines": {
         "node": "18.x"
     },
