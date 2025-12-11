@@ -9,8 +9,8 @@ export default function LeaderboardTab() {
     const fetchLeaderboard = useGameStore(s => s.fetchLeaderboard);
     const syncScore = useGameStore(s => s.syncScore);
 
-    const [handleInput, setHandleInput] = useState("");
-    const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [walletError, setWalletError] = useState(null);
 
     // Initial load
     useEffect(() => {
@@ -20,74 +20,73 @@ export default function LeaderboardTab() {
         }
     }, []);
 
-    const handleLogin = async () => {
-        if (!handleInput.trim()) return;
-        setIsLoggingIn(true);
-        // Simulate X auth delay + store call
-        await new Promise(r => setTimeout(r, 800));
-        const cleanHandle = handleInput.trim().replace(/^@/, '');
-        const success = await login(cleanHandle);
-        if (success) {
-            await syncScore();
-            fetchLeaderboard();
-        } else {
-            // No alert() - use console or just fail silently if store handled it.
-            // But better, let's use the new notification if we can access it, 
-            // or just rely on the store logging error.
-            console.error("Login failed. Check connection.");
-            useGameStore.getState().showNotification("Connection Failed: Backend not reachable", "error");
+    const connectPhantom = async () => {
+        setIsConnecting(true);
+        setWalletError(null);
+
+        try {
+            const { solana } = window;
+            if (solana && solana.isPhantom) {
+                const response = await solana.connect();
+                const walletAddress = response.publicKey.toString();
+
+                // Use wallet address as handle
+                const success = await login(walletAddress);
+                if (success) {
+                    await syncScore();
+                    fetchLeaderboard();
+                } else {
+                    useGameStore.getState().showNotification("Login Failed: Server Error", "error");
+                }
+            } else {
+                setWalletError("Phantom Wallet not found! Please install it.");
+            }
+        } catch (err) {
+            console.error("Wallet connection failed", err);
+            setWalletError("Connection rejected or failed.");
         }
-        setIsLoggingIn(false);
+        setIsConnecting(false);
     };
 
     if (!auth.isAuthenticated) {
         return (
             <div style={{ padding: 20, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                <div style={{ fontSize: 64, marginBottom: 20 }}>🏆</div>
+                <div style={{ fontSize: 64, marginBottom: 20 }}>👻</div>
                 <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 10 }}>Global Leaderboard</h2>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: 30, maxWidth: 300 }}>
-                    Compete with other degens. Sign in to track your rank and prove your empire is the strongest.
+                    Compete for Degen glory. Connect your wallet to save your empire's stats forever.
                 </p>
 
                 <div style={{ background: 'rgba(255,255,255,0.05)', padding: 24, borderRadius: 16, width: '100%', maxWidth: 320 }}>
-                    <input
-                        type="text"
-                        placeholder="@username"
-                        value={handleInput}
-                        onChange={(e) => setHandleInput(e.target.value)}
+                    <button
+                        className="btn-primary"
                         style={{
                             width: '100%',
-                            padding: '12px',
-                            borderRadius: 8,
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            background: 'rgba(0,0,0,0.3)',
-                            color: '#fff',
-                            marginBottom: 16,
-                            fontSize: 16,
-                            textAlign: 'center'
+                            background: '#AB9FF2',
+                            color: '#000',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: 8,
+                            marginBottom: 12,
+                            fontWeight: 700
                         }}
-                    />
-
-                    <button
-                        className="btn-primary"
-                        style={{ width: '100%', background: '#1DA1F2', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginBottom: 12 }}
-                        onClick={handleLogin}
-                        disabled={isLoggingIn}
+                        onClick={connectPhantom}
+                        disabled={isConnecting}
                     >
-                        {isLoggingIn ? 'Connecting...' : (
-                            <>
-                                <span>Sign in with 𝕏</span>
-                            </>
-                        )}
+                        {isConnecting ? 'Connecting...' : 'Connect Phantom 👻'}
                     </button>
 
-                    <button
-                        className="btn-primary"
-                        style={{ width: '100%', background: '#333', cursor: 'not-allowed', opacity: 0.6 }}
-                        disabled={true}
-                    >
-                        👻 Sign in with Phantom (Soon)
-                    </button>
+                    {walletError && (
+                        <div style={{ color: '#ff4d4d', fontSize: 12, marginTop: 10, padding: 8, background: 'rgba(255,0,0,0.1)', borderRadius: 8 }}>
+                            {walletError}
+                            {!window.solana && (
+                                <a href="https://phantom.app/" target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 4, color: '#AB9FF2', textDecoration: 'underline' }}>
+                                    Install Phantom
+                                </a>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -109,12 +108,17 @@ export default function LeaderboardTab() {
                 </button>
             </div>
 
-            <div style={{ marginBottom: 20, background: 'rgba(59, 255, 176, 0.1)', border: '1px solid rgba(59, 255, 176, 0.2)', padding: '12px 20px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ marginBottom: 20, background: 'rgba(171, 159, 242, 0.1)', border: '1px solid rgba(171, 159, 242, 0.3)', padding: '12px 20px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#1DA1F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
-                        {auth.user?.handle?.[0]?.toUpperCase() || 'U'}
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#AB9FF2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                        👻
                     </div>
-                    <span style={{ fontWeight: 600 }}>{auth.user?.handle?.startsWith('@') ? auth.user.handle : '@' + auth.user?.handle}</span>
+                    <div>
+                        <div style={{ fontSize: 10, color: '#AB9FF2', fontWeight: 600 }}>CONNECTED</div>
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>
+                            {auth.user?.handle?.slice(0, 4)}...{auth.user?.handle?.slice(-4)}
+                        </span>
+                    </div>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     Rank: <span style={{ color: '#fff', fontWeight: 700 }}>#{getUserRank(leaderboard, auth.user?.handle)}</span>
@@ -137,12 +141,14 @@ export default function LeaderboardTab() {
                             {leaderboard.map((u, i) => (
                                 <tr key={i} style={{
                                     borderBottom: '1px solid rgba(255,255,255,0.05)',
-                                    background: u.handle === auth.user?.handle ? 'rgba(255,255,255,0.05)' : 'transparent'
+                                    background: u.handle === auth.user?.handle ? 'rgba(171, 159, 242, 0.1)' : 'transparent'
                                 }}>
                                     <td style={{ padding: 12, width: 40 }}>
                                         {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
                                     </td>
-                                    <td style={{ padding: 12, fontWeight: 600 }}>{u.handle?.startsWith('@') ? u.handle : '@' + u.handle}</td>
+                                    <td style={{ padding: 12, fontWeight: 600, fontFamily: 'monospace', fontSize: 13 }}>
+                                        {u.handle?.slice(0, 4)}...{u.handle?.slice(-4)}
+                                    </td>
                                     <td style={{ padding: 12, textAlign: 'right', color: 'var(--accent-green)', fontFamily: 'monospace' }}>
                                         ${u.lifetimeYield?.toLocaleString()}
                                     </td>
@@ -157,6 +163,8 @@ export default function LeaderboardTab() {
 }
 
 function getUserRank(list, handle) {
-    const idx = list.findIndex(u => u.handle.toLowerCase() === handle.toLowerCase());
+    if (!handle) return '-';
+    // Handle specific string comparison (exact match)
+    const idx = list.findIndex(u => u.handle === handle);
     return idx === -1 ? '-' : idx + 1;
 }

@@ -1,43 +1,54 @@
-import { getDB, saveDB } from './_db.js';
+import { getDB } from './_db.js';
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const { handle, balance, lifetimeYield } = req.body;
 
-    // DB Access
-    const db = getDB();
+    try {
+        const db = await getDB();
+        const collection = db.collection('users');
 
-    // 1. UPDATE / LOGIN LOGIC
-    if (handle) {
-        let user = db.users.find(u => u.handle.toLowerCase() === handle.toLowerCase());
+        // 1. UPDATE LOGIC (if handle is present)
+        if (handle) {
+            // Clean handle (remove @ just in case, though wallet addrs don't have it)
+            const cleanHandle = handle.replace(/^@/, '');
 
-        if (!user) {
-            // Upsert / Auto-register
-            user = {
-                handle,
-                balance: 0,
-                lifetimeYield: 0,
-                lastActive: Date.now()
-            };
-            db.users.push(user);
+            // Upsert: Update if exists, Insert if new
+            await collection.updateOne(
+                { handle: cleanHandle },
+                {
+                    $set: {
+                        lastActive: Date.now()
+                    },
+                    $max: {
+                        balance: balance || 0,
+                        lifetimeYield: lifetimeYield || 0
+                    },
+                    $setOnInsert: {
+                        handle: cleanHandle,
+                        createdAt: Date.now()
+                    }
+                },
+                { upsert: true }
+            );
         }
 
-        // Update stats
-        user.balance = Math.max(user.balance || 0, balance || 0);
-        user.lifetimeYield = Math.max(user.lifetimeYield || 0, lifetimeYield || 0);
-        user.lastActive = Date.now();
+        // 2. READ LEADERBOARD LOGIC
+        // Fetch Top 50 by Lifetime Yield
+        const top50 = await collection
+            .find({})
+            .sort({ lifetimeYield: -1 })
+            .limit(50)
+            .project({ _id: 0, handle: 1, lifetimeYield: 1 }) // Only send necessary data
+            .toArray();
 
-        saveDB(db);
+        res.status(200).json({ success: true, leaderboard: top50 });
+
+    } catch (e) {
+        console.error("DB Error:", e);
+        res.status(500).json({ error: "Database error" });
     }
-
-    // 2. READ LEADERBOARD LOGIC
-    // Sort by Lifetime Yield desc
-    const sorted = [...db.users].sort((a, b) => (b.lifetimeYield || 0) - (a.lifetimeYield || 0));
-    const top50 = sorted.slice(0, 50);
-
-    // Return both success status and the data
-    res.status(200).json({ success: true, leaderboard: top50 });
 }
