@@ -21,16 +21,21 @@ const uri = "mongodb+srv://bradfordjoseph19_db_user:0UIprUf3Jl3AH4mx@dividends.x
 const client = new MongoClient(uri);
 let db;
 
-async function connectDB() {
+// Lazy Connection Middleware
+app.use(async (req, res, next) => {
+  if (db) return next();
   try {
-    await client.connect();
+    if (!client.topology || !client.topology.isConnected()) {
+      await client.connect();
+    }
     db = client.db('dividends_game');
     console.log("Connected to MongoDB Atlas");
+    next();
   } catch (e) {
     console.error("Failed to connect to MongoDB", e);
+    res.status(503).json({ error: "Database Connection Failed" });
   }
-}
-connectDB();
+});
 
 // --- API ---
 
