@@ -31,7 +31,10 @@ export default function LeaderboardTab() {
             await syncScore();
             fetchLeaderboard();
         } else {
-            alert("Could not connect to server. Ensure 'node backend/server.js' is running!");
+            // No alert() - use console or just fail silently if store handled it.
+            // But better, let's use the new notification if we can access it, 
+            // or just rely on the store logging error.
+            console.error("Login failed. Check connection.");
         }
         setIsLoggingIn(false);
     };

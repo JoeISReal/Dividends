@@ -588,7 +588,8 @@ export const useGameStore = create(
             ======================== */
             login: async (handle) => {
                 try {
-                    const res = await fetch('http://localhost:3001/api/auth/login', {
+                    // Use relative path for Vercel functions
+                    const res = await fetch('/api/auth/login', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ handle })
@@ -611,7 +612,7 @@ export const useGameStore = create(
                 if (!state.auth.isAuthenticated) return;
 
                 try {
-                    await fetch('http://localhost:3001/api/score', {
+                    await fetch('/api/score', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -628,7 +629,7 @@ export const useGameStore = create(
             fetchLeaderboard: async () => {
                 set({ leaderboardLoading: true });
                 try {
-                    const res = await fetch('http://localhost:3001/api/leaderboard');
+                    const res = await fetch('/api/leaderboard');
                     if (res.ok) {
                         const data = await res.json();
                         set({ leaderboard: data });
