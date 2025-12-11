@@ -400,11 +400,11 @@ app.post('/api/admin/reset', async (req, res) => {
     }
 });
 
-const PORT = 3001;
-// Only start server if NOT on Vercel (or similar serverless env)
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+const PORT = process.env.PORT || 3001;
+// Only start server if NOT on Vercel (Vercel exports app instead)
+if (!process.env.VERCEL) {
     app.listen(PORT, () => {
-        console.log(`Local Dev Server running on port ${PORT}`);
+        console.log(`Server running on port ${PORT}`);
     });
 }
 
