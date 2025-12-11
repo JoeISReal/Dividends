@@ -35,6 +35,7 @@ export default function LeaderboardTab() {
             // But better, let's use the new notification if we can access it, 
             // or just rely on the store logging error.
             console.error("Login failed. Check connection.");
+            useGameStore.getState().showNotification("Connection Failed: Backend not reachable", "error");
         }
         setIsLoggingIn(false);
     };
