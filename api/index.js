@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
@@ -6,7 +9,14 @@ import { STREAMS, UPGRADES } from './_src/data/GameData.js';
 import { EventSystem } from './_src/modules/Events.js';
 
 const app = express();
-app.use(cors());
+app.set('trust proxy', 1); // Render/Vercel behind proxy
+
+app.use(cors({
+    origin: process.env.CLIENT_ORIGIN || "*",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
 app.use(express.json());
 
 // Request logger
@@ -17,8 +27,18 @@ app.use((req, res, next) => {
 
 
 // MongoDB Configuration
-const uri = "mongodb+srv://bradfordjoseph19_db_user:0UIprUf3Jl3AH4mx@dividends.xramlsf.mongodb.net/?retryWrites=true&w=majority&appName=Dividends";
-const client = new MongoClient(uri);
+const uri = process.env.MONGO_URI;
+
+if (!uri) {
+    console.error("ERROR: MONGO_URI is not set. Backend cannot start.");
+    if (process.env.NODE_ENV === 'production') {
+        process.exit(1);
+    } else {
+        console.warn("Running in loose mode (no DB) just for health check test or local dev without .env");
+    }
+}
+
+const client = uri ? new MongoClient(uri) : null;
 let db;
 
 // Health Check
@@ -29,6 +49,9 @@ app.get('/api/test/health', (req, res) => {
 // Lazy Connection Middleware
 app.use(async (req, res, next) => {
     if (db) return next();
+    if (!client) {
+        return res.status(503).json({ error: "Database not configured (MONGO_URI missing)" });
+    }
     try {
         if (!client.topology || !client.topology.isConnected()) {
             await client.connect();
@@ -384,5 +407,11 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
         console.log(`Local Dev Server running on port ${PORT}`);
     });
 }
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error("SERVER ERROR:", err);
+    res.status(500).json({ error: "Internal server error" });
+});
 
 export default app;

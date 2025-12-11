@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: dividends-backend
+    env: node
+    rootDirectory: api
+    buildCommand: "npm install"
+    startCommand: "node index.js"
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: CLIENT_ORIGIN
+        value: https://dividends-lake.vercel.app
