@@ -1,5 +1,5 @@
 // frontend/src/api.js
-const BASE = 'http://localhost:3000/api';
+const BASE = 'http://localhost:3001/api';
 
 async function safeFetch(url, opts) {
     try {

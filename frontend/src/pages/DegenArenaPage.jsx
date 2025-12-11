@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useGameStore } from '../state/gameStore';
+import { soundManager } from '../game/SoundManager';
+
 import BetPanel from '../components/BetPanel';
 import DegenChart from '../components/DegenChart';
 import TradeHistoryList from '../components/TradeHistoryList';
@@ -65,6 +67,8 @@ export default function DegenArenaPage() {
         setActivePosition(null);
         if (chartRef.current) chartRef.current.applyTrade(0, 'sell'); // Visual only
         showNotification("📉 RUGGED! Market stability collapsed. You lost your position.", "bust");
+        // Safe sound call
+        if (soundManager.playError) soundManager.playError();
     };
 
     // Handle price updates from chart
@@ -83,9 +87,12 @@ export default function DegenArenaPage() {
 
     // Handle BUY action
     const handleBuy = (amount) => {
+        if (soundManager.playClick) soundManager.playClick();
+
         // Use Zustand spend action - returns false if insufficient balance
         if (!spend(amount)) {
             showNotification('Insufficient balance!', 'error');
+            if (soundManager.playError) soundManager.playError();
             return;
         }
 
@@ -115,10 +122,12 @@ export default function DegenArenaPage() {
                 currentValue: amount
             });
         }
+        if (soundManager.playSuccess) soundManager.playSuccess();
     };
 
     // Handle SELL action
     const handleSell = () => {
+        if (soundManager.playClick) soundManager.playClick();
         if (!activePosition) return;
 
         // Calculate P/L
@@ -138,6 +147,10 @@ export default function DegenArenaPage() {
         // Apply sell pressure to chart
         if (chartRef.current) {
             chartRef.current.applyTrade(activePosition.currentValue, 'sell');
+        }
+
+        if (pnl > 0) {
+            if (soundManager.playMoney) soundManager.playMoney();
         }
     };
 

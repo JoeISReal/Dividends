@@ -17,11 +17,13 @@ export default function handler(req, res) {
             handle,
             balance: 0,
             lifetimeYield: 0,
+            level: 1,
             lastActive: Date.now()
         };
         db.users.push(user);
         saveDB(db);
     }
 
+    // Return the full user object (including displayName if set)
     res.status(200).json({ success: true, user });
 }

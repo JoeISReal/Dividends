@@ -12,24 +12,35 @@ export default async function handler(req, res) {
         const collection = db.collection('users');
 
         // 1. UPDATE LOGIC (if handle is present)
+        // 1. UPDATE LOGIC (if handle is present)
         if (handle) {
             // Clean handle (remove @ just in case, though wallet addrs don't have it)
             const cleanHandle = handle.replace(/^@/, '');
 
-            // Upsert: Update if exists, Insert if new
+            // Prepare update fields
+            const updateFields = {
+                lastActive: Date.now()
+            };
+
+            // Only update stats if they are better (or sync logic)
+            // Actually, for sync we usually trust the client's latest for balances in this simple model
+            // But let's respect the $max logic for safety, OR just $set if we trust client authoritative state
+
+            // We do NOT update displayName here. That must come from /api/profile/update
+
             await collection.updateOne(
                 { handle: cleanHandle },
                 {
-                    $set: {
-                        lastActive: Date.now()
-                    },
+                    $set: updateFields,
                     $max: {
                         balance: balance || 0,
-                        lifetimeYield: lifetimeYield || 0
+                        lifetimeYield: lifetimeYield || 0,
+                        level: req.body.level || 1 // Sync Level
                     },
                     $setOnInsert: {
                         handle: cleanHandle,
-                        createdAt: Date.now()
+                        createdAt: Date.now(),
+                        // displayName will be undefined on insert, defaulting to handle in UI is fine
                     }
                 },
                 { upsert: true }
@@ -42,7 +53,7 @@ export default async function handler(req, res) {
             .find({})
             .sort({ lifetimeYield: -1 })
             .limit(50)
-            .project({ _id: 0, handle: 1, lifetimeYield: 1 }) // Only send necessary data
+            .project({ _id: 0, handle: 1, displayName: 1, level: 1, lifetimeYield: 1 }) // Send Name and Level
             .toArray();
 
         res.status(200).json({ success: true, leaderboard: top50 });

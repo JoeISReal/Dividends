@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from './state/gameStore';
-import { calculateIncome } from './game/incomeEngineFixed';
 import useGameLoop from './game/useGameLoop';
 import { getStreamDescription, getUpgradeDescription } from './data/descriptions';
 
@@ -10,15 +9,30 @@ import UpgradeCard from './components/UpgradeCard';
 import ManagersTab from './components/ManagersTab';
 import HelpTab from './components/HelpTab';
 import CommunityTab from './components/CommunityTab';
+import SettingsTab from './components/SettingsTab';
 import LeaderboardTab from './components/LeaderboardTab';
+import NotificationToast from './components/NotificationToast';
+import LoginPage from './pages/LoginPage';
 import DegenArenaPage from './pages/DegenArenaPage';
 import TradeHistoryPage from './pages/TradeHistoryPage';
-import NotificationToast from './components/NotificationToast';
+
+import { soundManager } from './game/SoundManager';
 
 export default function App() {
+  const auth = useGameStore(s => s.auth);
+  const syncScore = useGameStore(s => s.syncScore);
+
+  useEffect(() => {
+    soundManager.init();
+    const unlockAudio = () => {
+      soundManager.resume();
+      document.removeEventListener('click', unlockAudio);
+    };
+    document.addEventListener('click', unlockAudio);
+  }, []);
+
   // Zustand store hooks
   const balance = useGameStore((s) => s.balance);
-  const yps = useGameStore((s) => s.yps);
   const streams = useGameStore((s) => s.streams || {});
   const managers = useGameStore((s) => s.managers || {});
   const managerCosts = useGameStore((s) => s.managerCosts || {});
@@ -34,75 +48,70 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('streams');
   const [buyAmount, setBuyAmount] = useState(1);
 
-  // Core Game Loop (Passive Income + Offline Earnings)
+  // Core Game Loop
   useGameLoop(100);
 
-  // Manager automation - hired managers auto-level streams
+  // Manager automation
   useEffect(() => {
     const interval = setInterval(() => {
       const currentManagers = useGameStore.getState().managers;
       if (currentManagers) {
         Object.entries(currentManagers).forEach(([streamKey, isHired]) => {
-          if (isHired) {
-            buyStream(streamKey, 1);
-          }
+          if (isHired) buyStream(streamKey, 1);
         });
       }
-    }, 1000); // Managers buy every second
-
+    }, 1000);
     return () => clearInterval(interval);
   }, [buyStream]);
 
-  // Leaderboard Auto-Sync (Every 10s)
+  // Leaderboard Sync
   useEffect(() => {
     const interval = setInterval(() => {
       const auth = useGameStore.getState().auth;
-      if (auth.isAuthenticated) {
-        useGameStore.getState().syncScore();
-      }
-    }, 10000); // 10 seconds
-
+      if (auth.isAuthenticated) useGameStore.getState().syncScore();
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // Stream purchase handler
+  // Mandatory Login Check - Rendered AFTER hooks to prevent "fewer hooks" error
+  if (!auth.isAuthenticated) {
+    return (
+      <>
+        <LoginPage />
+        <NotificationToast />
+      </>
+    );
+  }
+
   const handleBuyStream = (streamKey) => {
+    soundManager.playClick();
     const quantity = buyAmount === 'MAX' ? 10 : Number(buyAmount);
+    soundManager.playSuccess();
     buyStream(streamKey, quantity);
   };
 
-  // Collect stream (manual click for non-automated streams)
   const handleCollectStream = (streamKey) => {
     const stream = streams[streamKey];
     if (!stream || stream.level === 0) return;
-
+    soundManager.playMoney();
     const earnedYield = stream.baseYps * stream.level * multipliers.prestige * multipliers.global;
     addBalance(earnedYield);
   };
 
-  // Manager hire handler
   const handleHireManager = (streamKey) => {
+    soundManager.playClick();
+    soundManager.playSuccess();
     hireManager(streamKey);
-  };
+  }
 
-  // Upgrade purchase handler
   const handleBuyUpgrade = (upgradeType) => {
+    soundManager.playClick();
+    soundManager.playSuccess();
     buyUpgrade(upgradeType);
-  };
+  }
 
-  // Dummy live degens for right sidebar
-  const dummyDegens = [
-    { name: "PaperHands", mul: 0.27 },
-    { name: "DiamondHands", mul: 3.20 },
-    { name: "WhaleWatcher", mul: 4.28 },
-    { name: "DipBuyer", mul: 0.89 },
-    { name: "MoonBoy420", mul: 2.15 },
-    { name: "HODL_Master", mul: 1.67 },
-  ];
-
-  // Render center content based on active tab
   let centerContent;
-  let liveDegens = dummyDegens;
+  let liveDegens = [];
 
   if (activeTab === 'streams') {
     centerContent = (
@@ -119,16 +128,10 @@ export default function App() {
                   cursor: "pointer",
                   padding: "8px 14px",
                   fontWeight: 600,
-                  background: buyAmount === amt
-                    ? 'linear-gradient(135deg, var(--gold-light), var(--gold))'
-                    : 'rgba(255, 255, 255, 0.08)',
-                  color: buyAmount === amt ? '#1D1D1D' : 'var(--text-high)',
-                  border: buyAmount === amt
-                    ? '1px solid var(--gold-light)'
-                    : '1px solid rgba(255, 255, 255, 0.15)',
-                  borderRadius: '8px',
-                  transition: 'all 0.15s ease',
-                  boxShadow: buyAmount === amt ? '0 0 12px rgba(247, 209, 109, 0.25)' : 'none'
+                  background: buyAmount === amt ? 'var(--gold)' : 'rgba(255,255,255,0.08)',
+                  color: buyAmount === amt ? '#000' : '#fff',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '8px'
                 }}
               >
                 {amt}
@@ -139,25 +142,22 @@ export default function App() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
           {Object.entries(streams).map(([key, stream]) => {
             const desc = getStreamDescription(key);
-            // Map stream data to format expected by StreamCard
-            const streamData = {
-              id: key,
-              name: desc.name,
-              description: desc.description,
-              icon: getStreamIcon(key),
-              owned: stream.level,
-              baseCost: stream.baseCost,
-              baseYield: stream.baseYps,
-              baseTime: 3, // Default 3 seconds
-              costScale: 1.15,
-              hasManager: managers[key],
-              unlocks: [], // Simplified - no unlocks for now
-            };
-
             return (
               <StreamCard
                 key={key}
-                stream={streamData}
+                stream={{
+                  id: key,
+                  name: desc.name,
+                  description: desc.description,
+                  icon: getStreamIcon(key),
+                  owned: stream.level,
+                  baseCost: stream.baseCost,
+                  baseYield: stream.baseYps,
+                  baseTime: 3,
+                  costScale: 1.15,
+                  hasManager: managers[key],
+                  unlocks: [],
+                }}
                 onBuy={() => handleBuyStream(key)}
                 buyAmount={buyAmount}
                 onCollect={() => handleCollectStream(key)}
@@ -168,7 +168,6 @@ export default function App() {
       </>
     );
   } else if (activeTab === 'managers') {
-    // Convert managers to array format for ManagersTab
     const managersArray = Object.entries(managers).map(([key, isHired]) => {
       const desc = getStreamDescription(key);
       return {
@@ -180,7 +179,6 @@ export default function App() {
         automatesStream: key,
       };
     });
-
     centerContent = (
       <ManagersTab
         managers={managersArray}
@@ -190,10 +188,8 @@ export default function App() {
       />
     );
   } else if (activeTab === 'upgrades') {
-    // Create upgrade catalog
     const clickDesc = getUpgradeDescription('click');
     const globalDesc = getUpgradeDescription('global');
-
     const upgradesCatalog = [
       {
         key: 'click',
@@ -212,7 +208,6 @@ export default function App() {
         effect: `x${multipliers.global.toFixed(2)}`,
       },
     ];
-
     centerContent = (
       <>
         <div className="main-header">
@@ -232,11 +227,12 @@ export default function App() {
     );
   } else if (activeTab === 'degen-arena') {
     centerContent = <DegenArenaPage />;
-    liveDegens = dummyDegens;
   } else if (activeTab === 'leaderboard') {
     centerContent = <LeaderboardTab />;
   } else if (activeTab === 'community') {
     centerContent = <CommunityTab />;
+  } else if (activeTab === 'settings') {
+    centerContent = <SettingsTab />;
   } else {
     centerContent = <HelpTab />;
   }
@@ -254,7 +250,6 @@ export default function App() {
   );
 }
 
-// Helper function to get stream icons
 function getStreamIcon(streamKey) {
   const icons = {
     shitpost: '💩',
@@ -266,4 +261,3 @@ function getStreamIcon(streamKey) {
   };
   return icons[streamKey] || '💰';
 }
-

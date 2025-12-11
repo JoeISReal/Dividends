@@ -150,7 +150,7 @@ export class TradingEngine {
         // XP System Hook
         if (!isBot && this.xpSystem) {
             const xp = this.xpSystem.calculateTradeXP(amount, this.volatility, this.momentum);
-            if (xp > 0) {
+            if (xp > 0 && this.onAwardXP) {
                 this.onAwardXP(xp);
             }
         }

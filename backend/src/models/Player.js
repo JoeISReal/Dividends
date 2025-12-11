@@ -27,9 +27,13 @@ export class Player {
         }
     }
 
-    save() {
+    async save() {
         this.lastActive = Date.now();
-        fs.writeFileSync(DATA_PATH, JSON.stringify(this, null, 2));
+        try {
+            await fs.promises.writeFile(DATA_PATH, JSON.stringify(this, null, 2));
+        } catch (e) {
+            console.error("Failed to save player data:", e);
+        }
     }
 
     // Helper to safely add yield

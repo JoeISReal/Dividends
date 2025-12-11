@@ -1,5 +1,7 @@
 import React from "react";
 import { useGameStore } from "./state/gameStore";
+import { soundManager } from "./game/SoundManager";
+import ConfirmationModal from "./components/ConfirmationModal";
 import "./styles/dividends-theme.css";
 
 export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) {
@@ -17,20 +19,37 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
     const doPrestige = useGameStore((s) => s.doPrestige);
 
     const handleMine = () => {
+        soundManager.playClick();
         registerClick();
     };
 
     const effectiveClickYield = yieldPerClick * clickMultiplier;
 
-    const handlePrestige = () => {
-        if (confirm("Prestige: reset streams for a shareholder multiplier. Confirm?")) {
-            const bonus = doPrestige();
-            alert(`Prestige complete! Gained +${bonus} to multiplier!`);
-        }
+    // Generic Modal State
+    const [modalConfig, setModalConfig] = React.useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { }
+    });
+
+    const handlePrestigeClick = () => {
+        soundManager.playClick();
+        setModalConfig({
+            isOpen: true,
+            title: 'Prestige Reset',
+            message: 'Are you sure you want to prestige? This will reset all streams and upgrades in exchange for a permanent multiplier bonus based on your current YPS.',
+            onConfirm: () => {
+                const bonus = doPrestige();
+                soundManager.playSuccess();
+                useGameStore.getState().showNotification(`Prestige Successful! +${bonus}x Multiplier`, 'success');
+                setModalConfig(prev => ({ ...prev, isOpen: false }));
+            }
+        });
     };
 
     return (
-        <div className="app-shell bg-abstract-hero bg-overlay">{/* LEFT NAV */}
+        <div className="app-shell bg-abstract-hero bg-overlay">
             {/* LEFT NAV */}
             <aside className="app-nav">
                 <div className="app-logo">
@@ -70,6 +89,7 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
                         { id: "degen-arena", label: "Degen Arena", icon: "🎰" },
                         { id: "leaderboard", label: "Leaderboard", icon: "🏆" },
                         { id: "community", label: "Community", icon: "🐦" },
+                        { id: "settings", label: "Settings", icon: "⚙️" },
                         { id: "help", label: "Help", icon: "❓" },
                     ].map(item => (
                         <div
@@ -77,7 +97,10 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
                             className={
                                 "nav-item" + (activeTab === item.id ? " nav-item--active" : "")
                             }
-                            onClick={() => onTabChange(item.id)}
+                            onClick={() => {
+                                onTabChange(item.id);
+                                soundManager.playClick();
+                            }}
                         >
                             <div className="nav-item-icon">{item.icon}</div>
                             <span>{item.label}</span>
@@ -101,7 +124,7 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
                     <button
                         className="btn-primary"
                         style={{ width: "100%", fontSize: 13 }}
-                        onClick={handlePrestige}
+                        onClick={handlePrestigeClick}
                     >
                         Prestige
                     </button>
@@ -129,6 +152,14 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
                     </div>
                 </div>
             </aside>
+
+            <ConfirmationModal
+                isOpen={modalConfig.isOpen}
+                title={modalConfig.title}
+                message={modalConfig.message}
+                onConfirm={modalConfig.onConfirm}
+                onCancel={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 }

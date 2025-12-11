@@ -49,6 +49,15 @@ export default function HelpTab() {
                     <li><strong>Rug:</strong> Dramatic crash</li>
                 </ul>
 
+                <h4>Market Stability (The "RUG" Meter):</h4>
+                <p><strong>Stability 0-100%:</strong> Represents the health of the market.</p>
+                <ul>
+                    <li><strong>100%:</strong> Market is safe and healthy.</li>
+                    <li><strong>Low Stability:</strong> High risk of a crash!</li>
+                    <li><strong>0%:</strong> 💀 <strong>RUG PULL!</strong> The market crashes, trade closes instantly, and stability resets.</li>
+                </ul>
+                <p><em>Stability drops when prices dump rapidly and recovers slightly when prices pump.</em></p>
+
                 <h4>Strategy Tips:</h4>
                 <ul>
                     <li>Start with low multipliers (1x-2x) to learn</li>
@@ -56,6 +65,7 @@ export default function HelpTab() {
                     <li>Sell into strength, buy into weakness</li>
                     <li>Higher multipliers = higher risk AND reward</li>
                     <li>The market has mean reversion - extreme prices tend to return to 1.0x</li>
+                    <li><strong>Watch the Stability Meter!</strong> If it gets low, best to exit.</li>
                 </ul>
             </div>
 

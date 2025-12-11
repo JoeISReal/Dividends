@@ -67,7 +67,7 @@ export class Economy {
         player.prestige.multiplier = Math.floor(newMultiplier * 100) / 100; // 2 decimals
         player.prestige.resets += 1;
 
-        player.save();
+        // player.save(); // handled by caller
         return { success: true, player };
     }
 }
