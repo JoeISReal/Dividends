@@ -21,6 +21,11 @@ const uri = "mongodb+srv://bradfordjoseph19_db_user:0UIprUf3Jl3AH4mx@dividends.x
 const client = new MongoClient(uri);
 let db;
 
+// Health Check
+app.get('/api/test/health', (req, res) => {
+    res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
 // Lazy Connection Middleware
 app.use(async (req, res, next) => {
     if (db) return next();
