@@ -1,0 +1,14 @@
+{
+    "name": "dividends-root",
+    "version": "1.0.0",
+    "private": true,
+    "engines": {
+        "node": "18.x"
+    },
+    "dependencies": {
+        "express": "^5.2.1",
+        "cors": "^2.8.5",
+        "mongodb": "^6.3.0"
+    },
+    "type": "module"
+}
