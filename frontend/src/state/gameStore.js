@@ -596,147 +596,146 @@ export const useGameStore = create(
                 if (!state.auth.isAuthenticated) return { success: false, error: "Not logged in" };
 
                 try {
-                    try {
-                        const res = await fetch(`${API_BASE}/api/profile/update`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                handle: state.auth.user.handle,
-                                newDisplayName: newName
-                            })
-                        });
+                    const res = await fetch(`${API_BASE}/api/profile/update`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            handle: state.auth.user.handle,
+                            newDisplayName: newName
+                        })
+                    });
 
-                        // Check content type to avoid JSON parse errors on 404 HTML pages
-                        const contentType = res.headers.get("content-type");
-                        let data;
-                        if (contentType && contentType.indexOf("application/json") !== -1) {
-                            data = await res.json();
-                        } else {
-                            // Likely a 404 server error page or similar
-                            const text = await res.text();
-                            console.error("Non-JSON response from server:", text.substring(0, 500));
-                            return { success: false, error: `Server Error (${res.status}): Endpoint likely not found` };
-                        }
-
-                        if (res.ok) {
-                            // Update local state
-                            set({
-                                auth: {
-                                    ...state.auth,
-                                    user: {
-                                        ...state.auth.user,
-                                        displayName: data.displayName
-                                    }
-                                }
-                            });
-                            return { success: true };
-                        } else {
-                            return { success: false, error: data.error || "Unknown server error" };
-                        }
-                    } catch (e) {
-                        console.error("Update Name Exception:", e);
-                        return { success: false, error: `Connection failed: ${e.message}` };
+                    // Check content type to avoid JSON parse errors on 404 HTML pages
+                    const contentType = res.headers.get("content-type");
+                    let data;
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        data = await res.json();
+                    } else {
+                        // Likely a 404 server error page or similar
+                        const text = await res.text();
+                        console.error("Non-JSON response from server:", text.substring(0, 500));
+                        return { success: false, error: `Server Error (${res.status}): Endpoint likely not found` };
                     }
-                },
 
-                login: async (handle) => {
-                    try {
-                        // Use relative path for Vercel functions
-                        // Use relative path for Vercel functions, or absolute for Render
-                        const res = await fetch(`${API_BASE}/api/auth/login`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ handle })
-                        });
-
-                        if (!res.ok) {
-                            const errText = await res.text();
-                            return { success: false, error: `Server error: ${res.status} ${res.statusText} - ${errText.substring(0, 50)}` };
-                        }
-
-                        const data = await res.json();
-                        if (data.success) {
-                            set({
-                                auth: { user: data.user, isAuthenticated: true },
-                                // Optimistically set level from DB if available
-                                level: data.user.level || 1,
-                            });
-                            return { success: true };
-                        }
-                        return { success: false, error: data.error || "Unknown server error" };
-                    } catch (e) {
-                        console.error("Login failed (Is backend running?)", e);
-                        return { success: false, error: `Connection failed: ${e.message}` };
-                    }
-                },
-
-                    logout: () => {
+                    if (res.ok) {
+                        // Update local state
                         set({
-                            auth: { user: null, isAuthenticated: false }
-                        });
-                    },
-
-                        syncScore: async () => {
-                            const state = get();
-                            if (!state.auth.isAuthenticated) return;
-
-                            try {
-                                // Unified call: Send Score -> Get Leaderboard
-                                // Unified call: Send Score -> Get Leaderboard
-                                const res = await fetch(`${API_BASE}/api/sync`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        handle: state.auth.user.handle.replace(/^@/, ''),
-                                        balance: state.balance,
-                                        lifetimeYield: state.lifetimeYield,
-                                        level: state.level // Send Level
-                                    })
-                                });
-
-                                if (res.ok) {
-                                    const data = await res.json();
-                                    // Update leaderboard immediately from response
-                                    if (data.leaderboard) {
-                                        set({ leaderboard: data.leaderboard });
-                                    }
+                            auth: {
+                                ...state.auth,
+                                user: {
+                                    ...state.auth.user,
+                                    displayName: data.displayName
                                 }
-                            } catch (e) {
-                                console.error("Score sync failed", e);
                             }
-                        },
+                        });
+                        return { success: true };
+                    } else {
+                        return { success: false, error: data.error || "Unknown server error" };
+                    }
+                } catch (e) {
+                    console.error("Update Name Exception:", e);
+                    return { success: false, error: `Connection failed: ${e.message}` };
+                }
+            },
 
-                            fetchLeaderboard: async () => {
-                                const state = get();
-                                set({ leaderboardLoading: true });
-                                try {
-                                    // Even for fetching, we can "ping" with current stats if auth, 
-                                    // or just send empty/partial to just read. 
-                                    // Let's send current stats if we have them to keep "User alive"
+            login: async (handle) => {
+                try {
+                    // Use relative path for Vercel functions
+                    // Use relative path for Vercel functions, or absolute for Render
+                    const res = await fetch(`${API_BASE}/api/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ handle })
+                    });
 
-                                    const payload = {};
-                                    if (state.auth.isAuthenticated) {
-                                        payload.handle = state.auth.user.handle.replace(/^@/, '');
-                                        payload.balance = state.balance;
-                                        payload.lifetimeYield = state.lifetimeYield;
-                                        payload.level = state.level;
-                                    }
+                    if (!res.ok) {
+                        const errText = await res.text();
+                        return { success: false, error: `Server error: ${res.status} ${res.statusText} - ${errText.substring(0, 50)}` };
+                    }
 
-                                    const res = await fetch(`${API_BASE}/api/sync`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(payload)
-                                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        set({
+                            auth: { user: data.user, isAuthenticated: true },
+                            // Optimistically set level from DB if available
+                            level: data.user.level || 1,
+                        });
+                        return { success: true };
+                    }
+                    return { success: false, error: data.error || "Unknown server error" };
+                } catch (e) {
+                    console.error("Login failed (Is backend running?)", e);
+                    return { success: false, error: `Connection failed: ${e.message}` };
+                }
+            },
 
-                                    if (res.ok) {
-                                        const data = await res.json();
-                                        set({ leaderboard: data.leaderboard });
-                                    }
-                                } catch (e) {
-                                    console.error("Leaderboard fetch failed", e);
-                                }
-                                set({ leaderboardLoading: false });
-                            },
+            logout: () => {
+                set({
+                    auth: { user: null, isAuthenticated: false }
+                });
+            },
+
+            syncScore: async () => {
+                const state = get();
+                if (!state.auth.isAuthenticated) return;
+
+                try {
+                    // Unified call: Send Score -> Get Leaderboard
+                    // Unified call: Send Score -> Get Leaderboard
+                    const res = await fetch(`${API_BASE}/api/sync`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            handle: state.auth.user.handle.replace(/^@/, ''),
+                            balance: state.balance,
+                            lifetimeYield: state.lifetimeYield,
+                            level: state.level // Send Level
+                        })
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Update leaderboard immediately from response
+                        if (data.leaderboard) {
+                            set({ leaderboard: data.leaderboard });
+                        }
+                    }
+                } catch (e) {
+                    console.error("Score sync failed", e);
+                }
+            },
+
+            fetchLeaderboard: async () => {
+                const state = get();
+                set({ leaderboardLoading: true });
+                try {
+                    // Even for fetching, we can "ping" with current stats if auth, 
+                    // or just send empty/partial to just read. 
+                    // Let's send current stats if we have them to keep "User alive"
+
+                    const payload = {};
+                    if (state.auth.isAuthenticated) {
+                        payload.handle = state.auth.user.handle.replace(/^@/, '');
+                        payload.balance = state.balance;
+                        payload.lifetimeYield = state.lifetimeYield;
+                        payload.level = state.level;
+                    }
+
+                    const res = await fetch(`${API_BASE}/api/sync`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        set({ leaderboard: data.leaderboard });
+                    }
+                } catch (e) {
+                    console.error("Leaderboard fetch failed", e);
+                }
+                set({ leaderboardLoading: false });
+            },
 
         }),
         {
