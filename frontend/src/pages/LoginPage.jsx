@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useGameStore } from '../state/gameStore';
 import { soundManager } from '../game/SoundManager';
 import '../styles/dividends-theme.css';
+import bs58 from 'bs58';
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export default function LoginPage() {
     const login = useGameStore(s => s.login);
@@ -20,12 +23,26 @@ export default function LoginPage() {
         try {
             const { solana } = window;
             if (solana && solana.isPhantom) {
+                // 1. Connect
                 const response = await solana.connect();
                 soundManager.playSuccess(); // Wallet found
                 const walletAddress = response.publicKey.toString();
 
-                // Use wallet address as handle
-                const result = await login(walletAddress);
+                // 2. Get Challenge
+                const chRes = await fetch(`${API_BASE}/api/auth/challenge?wallet=${walletAddress}`, {
+                    credentials: "include"
+                });
+                if (!chRes.ok) throw new Error("Failed to get challenge");
+                const ch = await chRes.json();
+
+                // 3. Sign Message
+                const encodedMessage = new TextEncoder().encode(ch.message);
+                const signedMessage = await solana.signMessage(encodedMessage, "utf8");
+                const signatureBase58 = bs58.encode(signedMessage.signature);
+
+                // 4. Verify & Login
+                const result = await login(walletAddress, ch.message, signatureBase58);
+
                 if (result && result.success) {
                     soundManager.playSuccess(); // Login success
                     await syncScore();
@@ -40,7 +57,6 @@ export default function LoginPage() {
         } catch (err) {
             console.error("Wallet connection failed", err);
             soundManager.playError();
-            // Show the actual error message
             setWalletError(`Connection failed: ${err.message || err.toString()}`);
         }
         setIsConnecting(false);
@@ -91,7 +107,7 @@ export default function LoginPage() {
 
                 <p style={{ color: 'var(--text-secondary)', marginBottom: 32, fontSize: 15, lineHeight: 1.5 }}>
                     Build your empire. Trade the arena. <br />
-                    Connect your wallet to begin.
+                    Sign in with your wallet to begin.
                 </p>
 
                 <button
@@ -110,7 +126,7 @@ export default function LoginPage() {
                     disabled={isConnecting}
                 >
                     <span style={{ fontSize: 20 }}>👻</span>
-                    {isConnecting ? 'Connecting...' : 'Connect Phantom'}
+                    {isConnecting ? 'Signing In...' : 'Connect Phantom'}
                 </button>
 
                 {walletError && (
@@ -132,7 +148,7 @@ export default function LoginPage() {
                 )}
 
                 <div style={{ marginTop: 24, fontSize: 12, color: 'var(--text-muted)' }}>
-                    Powered by Solana • v0.1.4
+                    Powered by Solana • Secure Auth
                 </div>
             </div>
         </div>
