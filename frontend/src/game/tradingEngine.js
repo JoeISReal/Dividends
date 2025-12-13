@@ -157,4 +157,26 @@ export class TradingEngine {
 
         return this.price;
     }
+    /**
+     * Helper to build or update a candle.
+     * If currentCandle is null, starts a new one with open/high/low/close = price.
+     * If provided, updates high/low/close.
+     */
+    buildCandle(currentCandle, price) {
+        if (!currentCandle) {
+            return {
+                open: price,
+                high: price,
+                low: price,
+                close: price
+            };
+        }
+
+        return {
+            ...currentCandle,
+            high: Math.max(currentCandle.high, price),
+            low: Math.min(currentCandle.low, price),
+            close: price
+        };
+    }
 }

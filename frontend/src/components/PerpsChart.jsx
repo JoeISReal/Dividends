@@ -148,6 +148,7 @@ const PerpsChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
             const candleWidth = width / MAX_CANDLES;
 
             const formatMoneyCanvas = (val) => {
+                if (val === null || val === undefined || isNaN(val)) return "0.00";
                 if (val >= 1e9) return (val / 1e9).toFixed(2) + 'B';
                 if (val >= 1e6) return (val / 1e6).toFixed(2) + 'M';
                 if (val >= 1e3) return (val / 1e3).toFixed(2) + 'K';
@@ -333,6 +334,7 @@ const PerpsChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
     }, []); // Empty deps - only run once on mount
 
     const formatMoney = (val) => {
+        if (val === null || val === undefined || isNaN(val)) return "0.0000";
         if (val >= 1e9) return (val / 1e9).toFixed(2) + 'B';
         if (val >= 1e6) return (val / 1e6).toFixed(2) + 'M';
         if (val >= 1e3) return (val / 1e3).toFixed(2) + 'K';

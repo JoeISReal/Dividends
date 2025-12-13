@@ -193,7 +193,7 @@ export default function DegenArenaPage() {
                 </div>
 
                 <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    Live: <span style={{ color: "var(--accent-green)", fontWeight: 600 }}>${currentPrice.toFixed(4)}</span>
+                    Live: <span style={{ color: "var(--accent-green)", fontWeight: 600 }}>${(currentPrice || 0).toFixed(4)}</span>
                 </div>
             </div>
 
