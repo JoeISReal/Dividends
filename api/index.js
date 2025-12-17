@@ -60,10 +60,15 @@ if (!uri) {
 const client = uri ? new MongoClient(uri) : null;
 let db;
 
-// Health Check (Standard)
-app.get('/api/test/health', (req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString() });
-});
+// Health Check
+app.get('/api/health', (req, res) => res.json({ status: 'ok', time: Date.now() }));
+
+// Version Check
+app.get('/api/version', (req, res) => res.json({
+    version: '1.2.0',
+    desc: 'Admin Nuke Added',
+    deployedAt: new Date().toISOString()
+}));
 
 // Debug Health (Chaos Aware)
 import { chaos } from './_src/services/chaos.js';
