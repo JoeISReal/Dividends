@@ -35,11 +35,14 @@ app.use(cors({
 
 app.use(express.json());
 
-// Request logger
+// Request logger with Origin debugging
 app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    const origin = req.headers.origin;
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} | Origin: ${origin}`);
     next();
 });
+
+console.log("CORS Configured for Origin:", process.env.CLIENT_ORIGIN);
 
 
 // MongoDB Configuration
