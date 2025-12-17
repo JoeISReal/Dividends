@@ -877,7 +877,25 @@ export const useGameStore = create(
         }),
         {
             name: 'dividends-game-state',
-            version: 1,
+            version: 2, // Increment version to trigger migration
+            migrate: (persistedState, version) => {
+                if (version < 2) {
+                    // Sanitize NaN values from previous version bugs
+                    const state = persistedState;
+                    if (Number.isNaN(state.balance)) state.balance = 0;
+                    if (Number.isNaN(state.yps)) state.yps = 0;
+                    if (Number.isNaN(state.lifetimeYield)) state.lifetimeYield = 0;
+
+                    // Sanitize streams
+                    if (state.streams) {
+                        Object.values(state.streams).forEach(s => {
+                            if (Number.isNaN(s.level)) s.level = 0;
+                        });
+                    }
+                    return state;
+                }
+                return persistedState;
+            },
         }
     )
 );
