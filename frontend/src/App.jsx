@@ -17,6 +17,7 @@ import DegenArenaPage from './pages/DegenArenaPage';
 import TradeHistoryPage from './pages/TradeHistoryPage';
 
 import { soundManager } from './game/SoundManager';
+import DebugOverlay from './components/DebugOverlay';
 
 export default function App() {
   const auth = useGameStore(s => s.auth);
@@ -235,6 +236,7 @@ export default function App() {
         liveDegens={liveDegens}
       />
       <NotificationToast />
+      <DebugOverlay />
     </>
   );
 }
