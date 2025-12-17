@@ -166,6 +166,7 @@ function processSnapshotForCache(snap) {
         timestamp: snap.timestamp,
         holders: holdersMap,
         sortedHolders: sorted,
+        totalHolders: snap.totalHolders || 0,
         thresholds: snap.thresholds || { whale: 0, chad: 0, medium: 0 },
         market: snap.market || {},
         metrics: snap.metrics || {}
@@ -174,6 +175,7 @@ function processSnapshotForCache(snap) {
 
 function shouldRefreshSnapshot() {
     if (!_currentSnapshot) return true;
+    if ((_currentSnapshot.totalHolders || 0) === 0) return true; // Force retry if empty
     const age = Date.now() - new Date(_currentSnapshot.timestamp).getTime();
     return age > SNAPSHOT_INTERVAL_MS;
 }
