@@ -682,6 +682,38 @@ app.get('/api/bags/status', requireAuth, async (req, res) => {
     }
 });
 
+// ADMIN: Delete User
+app.delete('/api/admin/user/:handle', async (req, res) => {
+    const { handle } = req.params;
+    const { secret } = req.query;
+
+    // Simple protection
+    if (secret !== 'admin_nuke_key') {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        const result = await db.collection('users').deleteOne({
+            $or: [
+                { handle: handle },
+                { displayName: handle } // Allow deleting by name too
+            ]
+        });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // Also clean challenges/sessions?
+        await db.collection('challenges').deleteMany({ wallet: handle });
+
+        res.json({ success: true, deleted: handle });
+    } catch (e) {
+        console.error("Delete Error:", e);
+        res.status(500).json({ error: "DB Error" });
+    }
+});
+
 // GET /api/bags/leaderboard (Public)
 app.get('/api/bags/leaderboard', async (req, res) => {
     try {
