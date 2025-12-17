@@ -802,7 +802,7 @@ export const useGameStore = create(
 
             logout: async () => {
                 try {
-                    await fetch(`${API_BASE} /api/auth / logout`, {
+                    await fetch(`${API_BASE}/api/auth/logout`, {
                         method: 'POST',
                         credentials: 'include'
                     });
@@ -820,7 +820,7 @@ export const useGameStore = create(
 
                 try {
                     // Unified call: Send Score -> Get Leaderboard
-                    const res = await fetch(`${API_BASE} /api/sync`, {
+                    const res = await fetch(`${API_BASE}/api/sync`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
