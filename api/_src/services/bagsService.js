@@ -1,37 +1,386 @@
 
-const BAGS_API_BASE = "https://bags.fm/api/v1"; // Or whatever the real endpoint is, usually we need an API key or specific endpoint. 
-// Since we don't have a specific Bags API doc provided in context, I will mock the structure or use standard Solana RPC for fallback.
-// Assumption: User wants "Bags API" integration but didn't provide specific docs. I will build a robust service that CAN be swaped easily.
-// Initial implementation will transparently fetch from a placeholder or mock if strictly Bags API is private.
-// Actually, I will use a simple implementation that returns mocked data for "Phase 2" requirements unless I find a public Bags endpoint.
-// Wait, "Bags" usually refers to the Bags App on Solana. 
-// I will implement a fetch wrapper.
+import { ObjectId } from 'mongodb';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { chaos } from './chaos.js';
+import * as marketService from './marketService.js';
 
+// Configuration
+const DIVIDENDS_MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
+const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+const SNAPSHOT_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const STALE_THRESHOLD_MS = 12 * 60 * 60 * 1000; // 12 hours (Guardrail)
+
+// Constants for Analytics
+const MOOD_THRESHOLDS = {
+    HEATED_VOLUME: 25000,
+    ACTIVE_VOLUME: 5000,
+    QUIET_VOLUME: 1000,
+    HIGH_CHURN: 10,  // Approx count per snapshot
+    HIGH_DELTA: 0.05
+};
+
+// In-memory cache
+let _db = null;
+let _currentSnapshot = null;
+let _tierThresholds = {
+    whale: 0,
+    chad: 0,
+    medium: 0
+};
+
+/**
+ * Initialize the Bags Service with the Database connection
+ */
+export async function init(db) {
+    _db = db;
+    console.log("[BagsService] Initializing...");
+
+    // 1. Load latest snapshot from DB
+    await loadLatestSnapshot();
+
+    // 2. If no snapshot or stale, trigger refresh (background)
+    if (shouldRefreshSnapshot()) {
+        refreshSnapshot().catch(err => console.error("[BagsService] Background refresh failed:", err));
+    }
+
+    // 3. Schedule periodic refresh
+    setInterval(() => {
+        // Chaos: Maybe delay the scheduled refresh
+        chaos.maybeDelay('snapshot_schedule').then(() => {
+            refreshSnapshot().catch(err => console.error("[BagsService] Scheduled refresh failed:", err));
+        });
+    }, SNAPSHOT_INTERVAL_MS);
+}
+
+/**
+ * public: Get a user's Tier and Approx Balance
+ */
+export function getHolderTier(walletAddress) {
+    // Guardrail: Safe default if no snapshot exists
+    if (!_currentSnapshot) {
+        return { tier: 'UNKNOWN', balanceApprox: 0, lastSync: new Date(), stale: true };
+    }
+
+    // Guardrail: Check for staleness
+    const now = Date.now();
+    const snapTime = new Date(_currentSnapshot.timestamp).getTime();
+    const age = now - snapTime;
+    const isStale = age > STALE_THRESHOLD_MS || chaos.shouldSimulateStale();
+
+    const holder = _currentSnapshot.holders[walletAddress];
+    if (!holder) {
+        return { tier: 'NONE', balanceApprox: 0, lastSync: _currentSnapshot.timestamp, stale: isStale };
+    }
+
+    return {
+        tier: calculateTier(holder.balance),
+        balanceApprox: holder.balance,
+        lastSync: _currentSnapshot.timestamp,
+        stale: isStale
+    };
+}
+
+/**
+ * public: Get the current leaderboard/stats
+ */
+export function getLeaderboard() {
+    if (!_currentSnapshot) return { updated: null, topHolders: [] };
+
+    return {
+        updatedAt: _currentSnapshot.timestamp,
+        topHolders: _currentSnapshot.sortedHolders.slice(0, 50).map(h => ({
+            wallet: h.wallet,
+            tier: calculateTier(h.balance),
+            balanceApprox: h.balance
+        }))
+    };
+}
+
+/**
+ * Public: Get Ecosystem Context/Mood
+ */
+export function getEcosystemMood() {
+    if (!_currentSnapshot) {
+        return {
+            mood: 'QUIET',
+            tags: [],
+            updatedAt: new Date().toISOString()
+        };
+    }
+
+    const metrics = _currentSnapshot.metrics || {};
+    return {
+        mood: metrics.mood || 'QUIET',
+        tags: metrics.tags || [],
+        metrics: {
+            top10Share: metrics.top10Share,
+            churnCount: metrics.churnCount,
+            netFlow: metrics.netFlow,
+            volume24h: _currentSnapshot.market?.volume24h || 0
+        },
+        updatedAt: _currentSnapshot.timestamp,
+        stale: (Date.now() - new Date(_currentSnapshot.timestamp).getTime()) > STALE_THRESHOLD_MS
+    };
+}
+
+// --- Internal Logic ---
+
+function calculateTier(balance) {
+    if (balance <= 0) return 'NONE';
+    if (balance >= _tierThresholds.whale) return 'WHALE';
+    if (balance >= _tierThresholds.chad) return 'CHAD';
+    if (balance >= _tierThresholds.medium) return 'MEDIUM';
+    return 'TINY';
+}
+
+async function loadLatestSnapshot() {
+    if (!_db) return;
+    try {
+        const snap = await _db.collection('bags_snapshots')
+            .find({})
+            .sort({ timestamp: -1 })
+            .limit(1)
+            .next();
+
+        if (snap) {
+            _currentSnapshot = processSnapshotForCache(snap);
+            _tierThresholds = snap.thresholds;
+            console.log(`[BagsService] Loaded snapshot from ${snap.timestamp.toISOString()}`);
+        }
+    } catch (e) {
+        console.error("[BagsService] Failed to load snapshot:", e);
+    }
+}
+
+function processSnapshotForCache(snap) {
+    const holdersMap = {};
+    if (snap.holders) {
+        snap.holders.forEach(h => {
+            holdersMap[h.wallet] = h;
+        });
+    }
+
+    const sorted = snap.holders ? [...snap.holders].sort((a, b) => b.balance - a.balance) : [];
+
+    return {
+        timestamp: snap.timestamp,
+        holders: holdersMap,
+        sortedHolders: sorted,
+        thresholds: snap.thresholds || { whale: 0, chad: 0, medium: 0 },
+        market: snap.market || {},
+        metrics: snap.metrics || {}
+    };
+}
+
+function shouldRefreshSnapshot() {
+    if (!_currentSnapshot) return true;
+    const age = Date.now() - new Date(_currentSnapshot.timestamp).getTime();
+    return age > SNAPSHOT_INTERVAL_MS;
+}
+
+/**
+ * Fetches fresh data, computes thresholds, saves to DB
+ */
+async function refreshSnapshot() {
+    console.log("[BagsService] Refreshing snapshot...");
+
+    await chaos.maybeDelay('snapshot_refresh');
+    chaos.maybeFail('snapshot_refresh');
+
+    // 1. Fetch Holders via RPC
+    const holdersList = await fetchHoldersFromRPC();
+
+    // 2. Fetch Market Data (Real - DexScreener)
+    const realMarketData = await marketService.fetchTokenData(DIVIDENDS_MINT);
+    const volume24h = realMarketData?.volume24h || 5000;
+
+    if (!holdersList || holdersList.length === 0) {
+        console.warn("[BagsService] No holders found (RPC error?), skipping update.");
+        return;
+    }
+
+    holdersList.sort((a, b) => b.balance - a.balance);
+    const totalHolders = holdersList.length;
+
+    // 3. Compute Thresholds (Dynamic Tiers)
+    const whaleMin = holdersList[Math.max(0, Math.min(99, Math.ceil(totalHolders * 0.01) - 1))]?.balance || 0;
+    const chadMin = holdersList[Math.max(0, Math.ceil(totalHolders * 0.10) - 1)]?.balance || 0;
+    const medMin = holdersList[Math.max(0, Math.ceil(totalHolders * 0.50) - 1)]?.balance || 0;
+
+    // 4. Compute Metrics & Mood
+    const metrics = analyzeSnapshot(holdersList, _currentSnapshot, volume24h);
+
+    const snapshot = {
+        timestamp: new Date(),
+        totalHolders,
+        holders: holdersList,
+        sortedHolders: holdersList, // Store sorted for easier debugging, though adds size
+        thresholds: {
+            whale: whaleMin,
+            chad: chadMin,
+            medium: medMin
+        },
+        metrics: metrics,
+        market: {
+            volume24h,
+            realData: realMarketData
+        }
+    };
+
+    // 5. Save & Cache
+    if (_db) {
+        // Optimization: Don't store full sorted list if it's huge, but for <2000 holders it's fine.
+        await _db.collection('bags_snapshots').insertOne(snapshot);
+    }
+
+    _currentSnapshot = processSnapshotForCache(snapshot);
+    _tierThresholds = snapshot.thresholds;
+
+    console.log(`[BagsService] Snapshot refreshed. Mood: ${metrics.mood} Tags: ${metrics.tags?.join(',')}`);
+}
+
+async function fetchHoldersFromRPC() {
+    const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+    const connection = new Connection(rpcUrl, 'confirmed');
+
+    try {
+        console.log(`[BagsService] Fetching holders via RPC...`);
+        const accounts = await connection.getParsedProgramAccounts(
+            TOKEN_PROGRAM_ID,
+            {
+                filters: [
+                    {
+                        dataSize: 165,
+                    },
+                    {
+                        memcmp: {
+                            offset: 0,
+                            bytes: DIVIDENDS_MINT,
+                        },
+                    },
+                ],
+            }
+        );
+
+        const holders = accounts.map(account => {
+            const parsedInfo = account.account.data.parsed.info;
+            const balance = parsedInfo.tokenAmount.uiAmount;
+            const wallet = parsedInfo.owner;
+            return { wallet, balance };
+        }).filter(h => h.balance > 0); // Exclude empty accounts
+
+        console.log(`[BagsService] Fetched ${holders.length} holders.`);
+        return holders;
+
+    } catch (e) {
+        console.error("[BagsService] RPC Fetch Error:", e);
+        // Fallback or rethrow? 
+        // Logic says "If RPC fails: keep last snapshot, log warning".
+        // Returning null will trigger the skip in refreshSnapshot.
+        return null;
+    }
+}
+
+function analyzeSnapshot(currentHolders, previousSnapshot, volume24h) {
+    const totalSupply = 1000000000;
+
+    // 1. Current State Metrics
+    const top10Balance = currentHolders.slice(0, 10).reduce((acc, h) => acc + h.balance, 0);
+    const top10Share = top10Balance / totalSupply;
+
+    const top50Balance = currentHolders.slice(0, 50).reduce((acc, h) => acc + h.balance, 0);
+    const top50Share = top50Balance / totalSupply;
+
+    // 2. Delta & Flow
+    let netFlow = 0;
+    let churnCount = 0;
+    let prevTop10Share = top10Share; // default if no prev
+
+    if (previousSnapshot && previousSnapshot.holders) {
+        // Net Flow Calculation (Top 50 focused or Global?)
+        // "Aggregate netFlow = sum(balanceDelta)" usually implies for the tracked set or meaningful movers.
+        // Let's track Net Flow of the Top 50 to see "Smart Money" direction.
+        // Or simply sum of ALL balance changes? Sum of all balance changes is always 0 (transfers).
+        // It must mean "Net Flow into/out of Top Holders" or specific wallets.
+        // Let's assume Net Flow of Top 50.
+
+        const prevHoldersMap = previousSnapshot.holders;
+        const currentTop50 = currentHolders.slice(0, 50);
+
+        // Churn: Count how many of Top 50 were NOT in Top 50 last time.
+        // Need to know Previous Top 50 list.
+        const prevTop50List = previousSnapshot.sortedHolders ? previousSnapshot.sortedHolders.slice(0, 50) : [];
+        const prevTop50Set = new Set(prevTop50List.map(h => h.wallet));
+
+        currentTop50.forEach(curr => {
+            if (!prevTop50Set.has(curr.wallet)) {
+                churnCount++;
+            }
+            // Net Flow calculation logic:
+            // Sum of (Current Bal - Previous Bal) for these Top 50 wallets.
+            const prevBal = prevHoldersMap[curr.wallet]?.balance || 0;
+            netFlow += (curr.balance - prevBal);
+        });
+
+        // Also check if any left the top 50 (already captured by churn count technically if size is constant, 
+        // but prompt says "addedWallets + removedWallets").
+        // If 5 entered, 5 left. So churnCount (entrants) * 2? Or just count entrants?
+        // Prompt: "churnCount = addedWallets + removedWallets". 
+        // If Top 50 size is constant, Added == Removed. So Churn = 2 * Entrants.
+        churnCount = churnCount * 2;
+
+        const prevTop10Bal = prevTop50List.slice(0, 10).reduce((acc, h) => acc + h.balance, 0);
+        prevTop10Share = prevTop10Bal / totalSupply;
+    }
+
+    // 3. Mood Derivation
+    let mood = 'QUIET';
+    const tags = [];
+
+    // Volume Rules
+    if (volume24h > MOOD_THRESHOLDS.HEATED_VOLUME) mood = 'HEATED';
+    else if (volume24h > MOOD_THRESHOLDS.ACTIVE_VOLUME) mood = 'ACTIVE';
+
+    // Churn Rules
+    if (churnCount >= MOOD_THRESHOLDS.HIGH_CHURN) {
+        if (Math.abs(netFlow) > 1000000) { // High flow + Churn
+            mood = 'HEATED';
+            tags.push('VOLATILE');
+        } else {
+            mood = 'ACTIVE';
+            tags.push('ROTATING');
+        }
+    }
+
+    // Concentration Rules
+    if (top10Share > prevTop10Share + 0.005) {
+        tags.push('CONCENTRATED');
+        if (mood === 'QUIET') mood = 'ACTIVE';
+    } else if (top10Share < prevTop10Share - 0.005) {
+        tags.push('DISTRIBUTING');
+    }
+
+    // Net Flow Rules
+    if (netFlow > 500000) tags.push('ACCUMULATING');
+    else if (netFlow < -500000) tags.push('DUMPING');
+
+    return {
+        top10Share,
+        top50Share,
+        netFlow,
+        churnCount,
+        mood,
+        tags
+    };
+}
+
+// Legacy exports for compatibility
 export async function getTokenStats(mint) {
-    // TODO: Replace with real Bags API call when docs provided
-    // For now, return realistic mock data for the Dividends Token
     return {
-        price: 0.0042,
-        volume24h: 125000,
-        mcap: 4200000,
-        supply: 1000000000,
-        holderCount: 1250
+        price: _currentSnapshot?.market?.realData?.price || 0,
+        holderCount: _currentSnapshot?.totalHolders || 0,
+        mood: getEcosystemMood().mood
     };
 }
-
-export async function getTokenFees(mint) {
-    // Mock fees
-    return {
-        totalFees: 150.5, // SOL
-        claimable: 12.4
-    };
-}
-
-export async function getTopHolders(mint) {
-    // Mock holders list
-    return [
-        { address: "7GB6...VTBAGS", amount: 50000000, percentage: 5.0 },
-        { address: "So11...1111", amount: 25000000, percentage: 2.5 },
-        { address: "DeAd...DeAd", amount: 10000000, percentage: 1.0 },
-    ];
-}
+export async function getTokenFees(mint) { return { totalFees: 0, claimable: 0 }; }
+export async function getTopHolders(mint) { return getLeaderboard().topHolders; }

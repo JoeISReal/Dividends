@@ -32,8 +32,18 @@ export default function LoginPage() {
                 const chRes = await fetch(`${API_BASE}/api/auth/challenge?wallet=${walletAddress}`, {
                     credentials: "include"
                 });
-                if (!chRes.ok) throw new Error("Failed to get challenge");
+                if (!chRes.ok) {
+                    const errText = await chRes.text().catch(() => 'No response body');
+                    console.error("Challenge Request Failed:", {
+                        status: chRes.status,
+                        statusText: chRes.statusText,
+                        url: chRes.url,
+                        body: errText
+                    });
+                    throw new Error(`Failed to get challenge: ${chRes.status} ${chRes.statusText}`);
+                }
                 const ch = await chRes.json();
+
 
                 // 3. Sign Message
                 const encodedMessage = new TextEncoder().encode(ch.message);

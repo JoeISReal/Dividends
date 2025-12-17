@@ -3,6 +3,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { calculateIncome } from '../game/incomeEngineFixed';
+import { getPerksForLevel } from '../game/perksRegistry';
+import { resilientFetch } from '../api/http';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -29,6 +31,18 @@ export const useGameStore = create(
             },
             leaderboard: [],
             leaderboardLoading: false,
+            bagsStatusError: false, // New state for bags status errors
+            isStale: false, // New state for stale data from bags status
+
+            marketStats: {
+                mood: 'QUIET',
+                volume24h: 0,
+                feesTrend: 'FLAT',
+                activeWalletsTrend: 'FLAT',
+                tags: [], // Added
+                analytics: {}, // Added
+                stale: false // Added
+            },
 
             /* ========================
                STREAMS
@@ -561,6 +575,8 @@ export const useGameStore = create(
                         totalArenaTradesWon: 0,
                         totalArenaTradesLost: 0,
                     },
+                    bagsStatusError: false, // Reset bags status error
+                    isStale: false, // Reset stale status
                 });
             },
 
@@ -643,7 +659,7 @@ export const useGameStore = create(
                         // Likely a 404 server error page or similar
                         const text = await res.text();
                         console.error("Non-JSON response from server:", text.substring(0, 500));
-                        return { success: false, error: `Server Error (${res.status}): Endpoint likely not found` };
+                        return { success: false, error: `Server Error(${res.status}): Endpoint likely not found` };
                     }
 
                     if (res.ok) {
@@ -663,7 +679,60 @@ export const useGameStore = create(
                     }
                 } catch (e) {
                     console.error("Update Name Exception:", e);
-                    return { success: false, error: `Connection failed: ${e.message}` };
+                    return { success: false, error: `Connection failed: ${e.message} ` };
+                }
+            },
+
+            // Phase 4: Resilient Fetch
+            fetchBagsStatus: async () => {
+                const s = get();
+                if (!s.auth.isAuthenticated) return;
+
+                set({ leaderboardLoading: true });
+                try {
+                    // 1. Holder Status
+                    const res = await resilientFetch('/api/bags/status');
+                    const data = await res.json();
+
+                    set(state => ({
+                        auth: {
+                            ...state.auth,
+                            user: {
+                                ...state.auth.user,
+                                holderTier: data.tier,
+                                holderBalanceApprox: data.balanceApprox
+                            }
+                        },
+                        // Store Stale State for UI
+                        bagsStatusError: false,
+                        isStale: !!data.stale
+                    }));
+
+                    // 2. Market Mood
+                    const marketRes = await resilientFetch('/api/ecosystem/mood');
+                    const marketData = await marketRes.json();
+                    set({
+                        marketStats: {
+                            mood: marketData.mood || 'QUIET',
+                            volume24h: marketData.volume24h || 0,
+                            tags: marketData.tags || [],
+                            analytics: marketData.analytics || {},
+                            feesTrend: 'FLAT',
+                            activeWalletsTrend: 'FLAT',
+                            stale: !!marketData.stale // Ecosystem can be stale too
+                        }
+                    });
+
+                } catch (e) {
+                    console.error("Bags fetch failed after retries:", e);
+                    if (e.status === 401) {
+                        // Session dead, force logout
+                        get().logout();
+                    } else {
+                        set({ bagsStatusError: true }); // UI can show "Connection Lost"
+                    }
+                } finally {
+                    set({ leaderboardLoading: false });
                 }
             },
 
@@ -683,7 +752,7 @@ export const useGameStore = create(
                             const json = JSON.parse(errText);
                             return { success: false, error: json.error || "Login Failed" };
                         } catch {
-                            return { success: false, error: `Server error: ${res.status} ${res.statusText}` };
+                            return { success: false, error: `Server error: ${res.status} ${res.statusText} ` };
                         }
                     }
 
@@ -727,13 +796,13 @@ export const useGameStore = create(
                     return { success: false, error: data.error || "Unknown server error" };
                 } catch (e) {
                     console.error("Login failed (Is backend running?)", e);
-                    return { success: false, error: `Connection failed: ${e.message}` };
+                    return { success: false, error: `Connection failed: ${e.message} ` };
                 }
             },
 
             logout: async () => {
                 try {
-                    await fetch(`${API_BASE}/api/auth/logout`, {
+                    await fetch(`${API_BASE} /api/auth / logout`, {
                         method: 'POST',
                         credentials: 'include'
                     });
@@ -751,7 +820,7 @@ export const useGameStore = create(
 
                 try {
                     // Unified call: Send Score -> Get Leaderboard
-                    const res = await fetch(`${API_BASE}/api/sync`, {
+                    const res = await fetch(`${API_BASE} /api/sync`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',

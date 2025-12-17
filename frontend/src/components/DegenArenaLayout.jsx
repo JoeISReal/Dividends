@@ -1,7 +1,14 @@
+
 import React from 'react';
 import '../styles/degen-theme.css';
+import { TierBadge } from './TierBadge';
+import { useGameStore } from '../state/gameStore';
+import { MOOD_CONFIG } from '../cosmetics/registry';
 
 export default function DegenArenaLayout({ chart, betPanel, liveDegens, balance, yps }) {
+    const user = useGameStore(s => s.auth.user);
+    const mood = useGameStore(s => s.marketStats?.mood) || 'QUIET';
+
     return (
         <div className="da-root">
             {/* Left Sidebar */}
@@ -17,7 +24,12 @@ export default function DegenArenaLayout({ chart, betPanel, liveDegens, balance,
                 </div>
 
                 <div className="da-balance-card card">
-                    <div className="da-label">Balance</div>
+                    <div className="da-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Balance</span>
+                        {user?.holderTier && user.holderTier !== 'NONE' && (
+                            <TierBadge tier={user.holderTier} size="xs" showLabel={false} />
+                        )}
+                    </div>
                     <div className="da-balance">${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     <div className="da-label mt-2">YPS</div>
                     <div className="da-yps">${yps.toFixed(2)} / sec</div>
@@ -48,26 +60,31 @@ export default function DegenArenaLayout({ chart, betPanel, liveDegens, balance,
                             <div className="da-badge da-badge--gold">10x 7</div>
                             <div className="da-badge da-badge--legend">50x 4</div>
                         </div>
+                        <div style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>Market Mood:</span>
+                            <span style={{ fontWeight: 600, color: MOOD_CONFIG[mood]?.color || '#9ca3af' }}>{mood}</span>
+                        </div>
                     </div>
 
-                    {/* Chart container */}
-                    <div className="da-chart-area">
+                    {/* The Chart (Passed as prop to reuse Logic) */}
+                    <div className="da-chart-container">
                         {chart}
                     </div>
                 </section>
 
-                {/* Bottom bet panel */}
-                <section className="card da-bet-shell">
-                    {betPanel}
+                <section className="card da-bet-panel">
+                    {betPanel || <div className="da-placeholder">Betting Controls</div>}
                 </section>
             </main>
 
-            {/* Right: Live Degens */}
-            <aside className="da-right">
-                <section className="card da-live-card">
-                    <div className="da-section-title">Live Degens</div>
-                    {liveDegens}
-                </section>
+            {/* Right: Live Feed / Players */}
+            <aside className="da-feed">
+                <div className="card h-full">
+                    <div className="da-label mb-2">Live Degens</div>
+                    <div className="da-feed-list">
+                        {liveDegens || <div className="da-placeholder">Connecting...</div>}
+                    </div>
+                </div>
             </aside>
         </div>
     );

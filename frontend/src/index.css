@@ -13,6 +13,23 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Custom Animation for Whale Tier */
+@keyframes shimmer-slow {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-slow {
+  animation: shimmer-slow 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 a {
   font-weight: 500;
   color: #646cff;

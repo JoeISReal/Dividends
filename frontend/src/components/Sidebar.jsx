@@ -1,5 +1,6 @@
 import React from 'react';
 import { useGame } from '../context/GameContext';
+import { EcosystemMoodPanel } from './EcosystemMoodPanel';
 
 export function Sidebar({ currentPage, onNavigate }) {
     const { gameState } = useGame();
@@ -59,6 +60,8 @@ export function Sidebar({ currentPage, onNavigate }) {
                     📈 Stats
                 </a>
             </div>
+
+            <EcosystemMoodPanel />
         </div>
     );
 }

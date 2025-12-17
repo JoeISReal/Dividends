@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../state/gameStore';
+
 import { soundManager } from '../game/SoundManager';
+import { TierBadge } from './TierBadge';
 
 export default function LeaderboardTab() {
     const auth = useGameStore(s => s.auth);
@@ -79,6 +81,9 @@ export default function LeaderboardTab() {
                         }}>
                             LVL {useGameStore.getState().level}
                         </span>
+                        {auth.user?.holderTier && auth.user.holderTier !== 'NONE' && (
+                            <TierBadge tier={auth.user.holderTier} size="sm" />
+                        )}
                     </div>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -116,9 +121,14 @@ export default function LeaderboardTab() {
                                         </td>
                                         <td style={{ padding: 12 }}>
                                             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                <span style={{ fontWeight: 600, fontSize: 13, color: u.displayName ? '#fff' : 'var(--text-secondary)' }}>
-                                                    {u.displayName || `${u.handle?.slice(0, 4)}...${u.handle?.slice(-4)}`}
-                                                </span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <span style={{ fontWeight: 600, fontSize: 13, color: u.displayName ? '#fff' : 'var(--text-secondary)' }}>
+                                                        {u.displayName || `${u.handle?.slice(0, 4)}...${u.handle?.slice(-4)}`}
+                                                    </span>
+                                                    {u.holderTier && u.holderTier !== 'NONE' && (
+                                                        <TierBadge tier={u.holderTier} size="xs" />
+                                                    )}
+                                                </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-muted)' }}>
                                                     {u.displayName && <span style={{ fontFamily: 'monospace' }}>{u.handle?.slice(0, 4)}</span>}
                                                     <span style={{
@@ -140,8 +150,9 @@ export default function LeaderboardTab() {
                         </tbody>
                     </table>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }
 

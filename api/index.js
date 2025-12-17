@@ -57,9 +57,39 @@ if (!uri) {
 const client = uri ? new MongoClient(uri) : null;
 let db;
 
-// Health Check
+// Health Check (Standard)
 app.get('/api/test/health', (req, res) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// Debug Health (Chaos Aware)
+import { chaos } from './_src/services/chaos.js';
+
+app.get('/api/debug/health', (req, res) => {
+    // In production, you might want to protect this or strip chaos info
+    res.json({
+        ok: true,
+        time: new Date().toISOString(),
+        chaos: chaos.getStatus(),
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
+// --- SYBIL PROTECTION (Phase 3) ---
+import { sybilService } from './_src/services/sybilService.js';
+
+app.post('/api/click', (req, res) => {
+    // Monitor Risk
+    const risk = sybilService.assessActionRisk(req.session?.user?.handle || 'guest', 'CLICK', { timestamp: Date.now() });
+
+    // Soft Enforcement (Phase 3 Part C)
+    let xpMultiplier = 1.0;
+    if (risk.riskScore > 75) {
+        xpMultiplier = 0.1; // Silent cap for bots
+        // console.log(`[Sybil] Silent throttling applied to ${req.session?.user?.handle}`);
+    }
+
+    res.json({ success: true, yield: 1 * xpMultiplier, riskScore: risk.riskScore });
 });
 
 // Lazy Connection Middleware
@@ -74,6 +104,8 @@ app.use(async (req, res, next) => {
         }
         db = client.db('dividends_game');
         console.log("Connected to MongoDB Atlas");
+        // Initialize Bags Service
+        bagsService.init(db).catch(e => console.error("Bags Init Error:", e));
         next();
     } catch (e) {
         console.error("Failed to connect to MongoDB", e);
@@ -175,6 +207,29 @@ app.post("/api/auth/verify", async (req, res) => {
             await collection.insertOne(user);
         }
 
+        // --- BAGS INTEGRATION: SYNC TIER ON LOGIN ---
+        try {
+            const bagsInfo = bagsService.getHolderTier(wallet);
+            if (bagsInfo) {
+                await collection.updateOne(
+                    { handle: wallet },
+                    {
+                        $set: {
+                            holderTier: bagsInfo.tier,
+                            holderBalanceApprox: bagsInfo.balanceApprox,
+                            lastTierSync: new Date()
+                        }
+                    }
+                );
+                // Update local user object for response
+                user.holderTier = bagsInfo.tier;
+                user.holderBalanceApprox = bagsInfo.balanceApprox;
+            }
+        } catch (err) {
+            console.error("Bags Sync Error on Login:", err);
+        }
+        // --------------------------------------------
+
         res.json({ ok: true, wallet, user });
     } catch (e) {
         console.error("Verify Error:", e);
@@ -201,10 +256,17 @@ app.post('/api/sync', requireAuth, async (req, res) => {
 
     try {
         // 1. UPDATE USER
+        const bagsInfo = bagsService.getHolderTier(handle); // Fetch latest tier
+
         await collection.updateOne(
             { handle },
             {
-                $set: { lastActive: Date.now() },
+                $set: {
+                    lastActive: Date.now(),
+                    holderTier: bagsInfo.tier,
+                    holderBalanceApprox: bagsInfo.balanceApprox,
+                    lastTierSync: new Date()
+                },
                 $max: {
                     balance: balance || 0,
                     lifetimeYield: lifetimeYield || 0,
@@ -218,7 +280,7 @@ app.post('/api/sync', requireAuth, async (req, res) => {
             .find({})
             .sort({ lifetimeYield: -1 })
             .limit(50)
-            .project({ _id: 0, handle: 1, lifetimeYield: 1, displayName: 1, level: 1 })
+            .project({ _id: 0, handle: 1, lifetimeYield: 1, displayName: 1, level: 1, holderTier: 1 })
             .toArray();
 
         res.json({ success: true, leaderboard: top50 });
@@ -473,6 +535,15 @@ app.get('/api/events/random', (req, res) => {
 // --- BAGS API ROUTES (Public) ---
 const DIVIDENDS_MINT = process.env.DIVIDENDS_MINT || "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
 
+app.get('/api/ecosystem/mood', async (req, res) => {
+    try {
+        const moodData = bagsService.getEcosystemMood();
+        res.json(moodData);
+    } catch (e) {
+        res.status(500).json({ error: "Ecosystem error" });
+    }
+});
+
 app.get('/api/bags/token/stats', async (req, res) => {
     try {
         const stats = await bagsService.getTokenStats(DIVIDENDS_MINT);
@@ -500,6 +571,37 @@ app.get('/api/bags/token/top-holders', async (req, res) => {
     } catch (e) {
         console.error("Bags API Holders Error:", e);
         res.status(500).json({ error: "Failed to fetch top holders" });
+    }
+});
+
+// --- BAGS FEATURE ROUTES ---
+
+// GET /api/bags/status (Authenticated)
+// Returns the caller's tier status
+app.get('/api/bags/status', requireAuth, async (req, res) => {
+    const handle = req.session.wallet;
+    try {
+        const info = bagsService.getHolderTier(handle);
+        res.json({
+            wallet: handle,
+            tier: info.tier,
+            balanceApprox: info.balanceApprox,
+            snapshotTime: info.lastSync
+        });
+    } catch (e) {
+        console.error("Bags Status Error:", e);
+        res.status(500).json({ error: "Internal Error" });
+    }
+});
+
+// GET /api/bags/leaderboard (Public)
+app.get('/api/bags/leaderboard', async (req, res) => {
+    try {
+        const lb = bagsService.getLeaderboard();
+        res.json(lb);
+    } catch (e) {
+        console.error("Bags Leaderboard Error:", e);
+        res.status(500).json({ error: "Internal Error" });
     }
 });
 

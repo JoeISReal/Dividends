@@ -2,7 +2,9 @@ import React from "react";
 import { useGameStore } from "./state/gameStore";
 import { soundManager } from "./game/SoundManager";
 import ConfirmationModal from "./components/ConfirmationModal";
+import { TierBadge } from "./components/TierBadge";
 import "./styles/dividends-theme.css";
+import { MOOD_CONFIG } from './cosmetics/registry';
 
 export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) {
     // Zustand store hooks
@@ -13,6 +15,8 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
     const yieldPerClick = useGameStore((s) => s.yieldPerClick);
     const clickMultiplier = useGameStore((s) => s.multipliers.click);
     const prestigeMultiplier = useGameStore((s) => s.multipliers.prestige);
+    const user = useGameStore((s) => s.auth.user);
+    const marketStats = useGameStore((s) => s.marketStats);
 
     // Actions
     const registerClick = useGameStore((s) => s.registerClick);
@@ -138,6 +142,97 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
 
             {/* RIGHT SIDEBAR */}
             <aside className="app-right">
+                <div className="panel" style={{ marginBottom: 16 }}>
+                    <div className="panel-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Ecosystem</span>
+                        <button
+                            onClick={(e) => {
+                                e.currentTarget.style.opacity = 0.5;
+                                fetchBagsStatus().then(() => e.currentTarget.style.opacity = 1);
+                            }}
+                            title="Force Refresh Data"
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: 14,
+                                padding: 0
+                            }}
+                        >
+                            🔄
+                        </button>
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                        {marketStats?.stale && (
+                            <div style={{
+                                background: 'rgba(234, 179, 8, 0.15)',
+                                color: '#eab308',
+                                padding: '4px 8px',
+                                borderRadius: 4,
+                                marginBottom: 8,
+                                fontSize: 11,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6
+                            }}>
+                                <span>⚠️ Data Delayed</span>
+                            </div>
+                        )}
+                        {/* Bags Status Error (Network) */}
+                        {bagsStatusError && (
+                            <div style={{ color: '#ef4444', marginBottom: 8, fontSize: 11 }}>
+                                📡 Connection Issues
+                            </div>
+                        )}
+
+                        {user?.holderTier !== undefined ? (
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                <span>Status</span>
+                                <TierBadge tier={user.holderTier} />
+                            </div>
+                        ) : (
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                <span>Status</span>
+                                <span style={{ fontSize: 12 }}>Guest</span>
+                            </div>
+                        )}
+
+                        <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 8 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                                <span>Market Mood</span>
+                                <span style={{
+                                    fontWeight: 700,
+                                    color: MOOD_CONFIG[marketStats?.mood]?.color || '#9ca3af',
+                                    letterSpacing: '0.05em'
+                                }}>
+                                    {marketStats?.mood || 'QUIET'}
+                                </span>
+                            </div>
+
+                            {/* Tags / Analytics Display */}
+                            {marketStats?.tags && marketStats.tags.length > 0 && (
+                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8, justifyContent: 'flex-end' }}>
+                                    {marketStats.tags.map(tag => (
+                                        <span key={tag} style={{
+                                            fontSize: 10,
+                                            background: 'rgba(255,255,255,0.05)',
+                                            padding: '1px 4px',
+                                            borderRadius: 4,
+                                            color: 'var(--text-secondary)'
+                                        }}>
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: 'var(--text-muted)' }}>
+                                <span>24h Vol</span>
+                                <span>{(marketStats?.volume24h || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div className="panel">
                     <div className="panel-title">Stats</div>
                     <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
@@ -162,4 +257,10 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
             />
         </div>
     );
+}
+
+function getMoodColor(mood) {
+    // Legacy helper kept for safety, but UI above uses registry directly
+    const config = MOOD_CONFIG[mood];
+    return config ? config.color : '#9ca3af';
 }
