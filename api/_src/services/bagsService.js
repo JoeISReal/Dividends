@@ -240,7 +240,7 @@ async function refreshSnapshot() {
 }
 
 async function fetchHoldersFromRPC() {
-    const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+    const rpcUrl = process.env.SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
     const connection = new Connection(rpcUrl, 'confirmed');
 
     try {
