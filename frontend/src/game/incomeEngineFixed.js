@@ -37,7 +37,7 @@ export function calculateIncome(state, dtSeconds) {
 
         // Calculate base yield for this stream
         const cycleTime = Number(stream.baseTime || 1);
-        const baseYield = Number(stream.baseYield || 0);
+        const baseYield = Number(stream.baseYield || stream.baseYps || 0);
 
         let rawYield = (baseYield * count) / (cycleTime > 0 ? cycleTime : 1);
 
