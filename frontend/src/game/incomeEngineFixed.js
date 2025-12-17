@@ -18,8 +18,6 @@ export function calculateIncome(state, dtSeconds) {
     let totalIncome = 0;
 
     // Iterate through all streams in the state
-    // We handle both array (GameContext default) and object (gameStore legacy) structures just in case,
-    // but based on latest file views, GameContext uses an array of objects.
     const streams = Array.isArray(state.streams)
         ? state.streams
         : Object.entries(state.streams).map(([key, val]) => ({ ...val, id: key }));
@@ -27,12 +25,10 @@ export function calculateIncome(state, dtSeconds) {
 
     for (const stream of streams) {
         // FAILSAFE 1: If count/owned is 0, no income.
-        const count = stream.owned || stream.level || 0;
-        if (count <= 0) continue;
+        const count = Number(stream.owned || stream.level || 0);
+        if (isNaN(count) || count <= 0) continue;
 
         // FAILSAFE 2: If no manager, STRICTLY NO PASSIVE INCOME.
-        // We check specifically for the boolean true.
-        // Also check if stream.id is in state.managers if not on stream object directly, for robustness
         const hasManager = stream.hasManager === true || (state.managers && state.managers[stream.id] === true);
 
         if (!hasManager) {
@@ -40,10 +36,12 @@ export function calculateIncome(state, dtSeconds) {
         }
 
         // Calculate base yield for this stream
-        // Formula: (baseYield * count) / cycleTime
-        // If cycleTime is 0 or missing, assume 1s to avoid divide by zero (though data says baseTime >= 1)
-        const cycleTime = stream.baseTime || 1;
-        const rawYield = (stream.baseYield * count) / cycleTime;
+        const cycleTime = Number(stream.baseTime || 1);
+        const baseYield = Number(stream.baseYield || 0);
+
+        let rawYield = (baseYield * count) / (cycleTime > 0 ? cycleTime : 1);
+
+        if (isNaN(rawYield)) rawYield = 0;
 
         // Apply Multipliers
         let multiplier = 1;
@@ -51,41 +49,42 @@ export function calculateIncome(state, dtSeconds) {
         // 1. Unlocks (milestones)
         if (stream.unlocks && Array.isArray(stream.unlocks)) {
             for (const unlock of stream.unlocks) {
-                if (count >= unlock.owned && unlock.type === 'profit') {
-                    multiplier *= unlock.multiplier;
+                const uOwned = Number(unlock.owned || 0);
+                if (count >= uOwned && unlock.type === 'profit') {
+                    multiplier *= Number(unlock.multiplier || 1);
                 }
             }
         }
 
         // 2. Global Multipliers (from upgrades/prestige)
-        // Check both old 'multipliers' object and new 'upgrades' map patterns
         if (state.multipliers) {
-            multiplier *= (state.multipliers.global || 1);
-            multiplier *= (state.multipliers.prestige || 1);
+            multiplier *= Number(state.multipliers.global || 1);
+            multiplier *= Number(state.multipliers.prestige || 1);
         }
 
-        // 3. Upgrade Catalog / Upgrades Map
-        // Example: 'global_mult' or specific stream upgrades
+        // 3. Upgrade Catalog
         if (state.upgrades) {
             if (state.upgrades['global_mult']) {
-                multiplier *= (1 + 0.1 * state.upgrades['global_mult']);
+                const lvl = Number(state.upgrades['global_mult'] || 0);
+                multiplier *= (1 + 0.1 * lvl);
             }
             // Stream specific boost
             const streamBoostKey = `${stream.id}_mult`;
             if (state.upgrades[streamBoostKey]) {
-                multiplier *= (1 + 0.5 * state.upgrades[streamBoostKey]);
+                const lvl = Number(state.upgrades[streamBoostKey] || 0);
+                multiplier *= (1 + 0.5 * lvl);
             }
         }
 
         if (state.shareholderMultiplier) {
-            multiplier *= state.shareholderMultiplier;
+            multiplier *= Number(state.shareholderMultiplier || 1);
         }
 
-        // Final failsafe clamp for manager
-        const corruptionCheck = stream.hasManager ? 1 : 0;
+        if (isNaN(multiplier)) multiplier = 1;
 
-        totalIncome += (rawYield * multiplier * corruptionCheck);
+        totalIncome += (rawYield * multiplier);
     }
 
-    return totalIncome * dtSeconds;
+    const finalVal = totalIncome * Number(dtSeconds || 0);
+    return isNaN(finalVal) ? 0 : finalVal;
 }
