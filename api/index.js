@@ -183,8 +183,8 @@ app.post("/api/auth/verify", async (req, res) => {
 
         res.cookie("sid", token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            secure: true, // Required for SameSite=None
+            sameSite: "none", // Required for cross-site (Vercel -> Render)
             maxAge: 7 * 24 * 60 * 60 * 1000,
             path: "/"
         });
