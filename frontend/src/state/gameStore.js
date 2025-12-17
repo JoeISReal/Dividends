@@ -251,6 +251,14 @@ export const useGameStore = create(
                     yps: newYps
                 });
 
+                // Sync
+                fetch(`${API_BASE}/api/hire-manager`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ streamId: streamKey })
+                }).catch(e => console.error("Hire manager sync fail", e));
+
                 return true;
             },
 
@@ -287,7 +295,7 @@ export const useGameStore = create(
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
-                        body: JSON.stringify({ key: 'click_upgrade' }) // Mapping needed? Or just generic
+                        body: JSON.stringify({ key: 'click' })
                     }).catch(e => console.error("Buy upgrade sync fail", e));
 
                     return true;
@@ -328,7 +336,7 @@ export const useGameStore = create(
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
-                        body: JSON.stringify({ key: 'global_upgrade' })
+                        body: JSON.stringify({ key: 'global' })
                     }).catch(e => console.error("Buy upgrade sync fail", e));
 
                     return true;

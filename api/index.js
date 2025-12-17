@@ -449,31 +449,60 @@ app.post('/api/buy-stream', requireAuth, async (req, res) => {
     }
 });
 
-// BUY UPGRADE (Protected)
-app.post('/api/buy-upgrade', requireAuth, async (req, res) => {
-    const { key } = req.body;
-    const handle = req.session.wallet; // From Session
+// HIRE MANAGER (Protected)
+app.post('/api/hire-manager', requireAuth, async (req, res) => {
+    const { streamId } = req.body;
+    const handle = req.session.wallet;
 
     const player = await getPlayer(handle);
     if (!player) return res.status(404).json({ error: "Player not found" });
 
-    const upgrade = UPGRADES.find(u => u.id === key);
-    if (!upgrade) return res.status(404).json({ success: false, reason: "Upgrade not found" });
+    // Initialize managers if missing
+    if (!player.managers) player.managers = {};
 
-    if (player.upgrades && player.upgrades.includes(key)) {
-        return res.status(400).json({ success: false, reason: 'Already owned' });
+    if (player.managers[streamId]) {
+        return res.status(400).json({ success: false, reason: 'Already hired' });
     }
 
-    if (player.balance >= upgrade.cost) {
-        player.balance -= upgrade.cost;
-        if (!player.upgrades) player.upgrades = [];
-        player.upgrades.push(key);
+    // Get cost from Economy (or constant) because managers are flat cost
+    // We need to fetch the cost. Since Economy might not expose it directly, 
+    // let's rely on the shared data source imported at top: STREAMS
+    // Find manager cost in STREAMS data
+    // Usually manager cost is static.
+    // Let's assume passed ID is 'shitpost' etc.
+    // Based on gameStore, manager costs are:
+    // shitpost: 15000, engagement: 100000, pump: 500000, nft: 1000000, algo: 5000000, sentiment: 10000000
+    // We should ideally export this from Economy or GameData to avoid drift.
+    // For now, hardcode lookup from STREAMS or a robust map.
+    // STREAMS is imported. Let's look at STREAMS structure in GameData logic or just lookup.
+    // But STREAMS doesn't strictly have manager cost in all versions.
+    // Use Economy helper if available or fail safely.
+
+    // Let's verify Economy.js availability. 
+    // Assuming we can extend Economy or use a local map for safety.
+    const MANAGER_COSTS = {
+        shitpost: 15000,
+        engagement: 100000,
+        pump: 500000,
+        nft: 1000000,
+        algo: 5000000,
+        sentiment: 10000000,
+    };
+
+    const cost = MANAGER_COSTS[streamId];
+    if (!cost) return res.status(400).json({ error: "Invalid manager ID" });
+
+    if (player.balance >= cost) {
+        player.balance -= cost;
+        player.managers[streamId] = true;
 
         await db.collection('users').updateOne(
             { handle: player.handle },
             {
-                $set: { balance: player.balance },
-                $push: { upgrades: key }
+                $set: {
+                    [`managers.${streamId}`]: true,
+                    balance: player.balance
+                }
             }
         );
         res.json({ success: true, player });
@@ -481,6 +510,62 @@ app.post('/api/buy-upgrade', requireAuth, async (req, res) => {
         res.status(400).json({ success: false, reason: 'Insufficient funds' });
     }
 });
+
+// BUY UPGRADE (Protected)
+app.post('/api/buy-upgrade', requireAuth, async (req, res) => {
+    const { key } = req.body; // 'click' or 'global'
+    const handle = req.session.wallet;
+
+    const player = await getPlayer(handle);
+    if (!player) return res.status(404).json({ error: "Player not found" });
+
+    // Init Upgrades
+    // Structure in DB: 
+    // player.upgrades (array of strings) or player.upgradeLevels (map)
+    // gameStore uses 'upgrades' object with level counters: { clickLevel: 0, globalLevel: 0 }
+    // Let's align with gameStore schema.
+    if (!player.upgrades) player.upgrades = { clickLevel: 0, globalLevel: 0 };
+    // Legacy support: if player.upgrades is array, migrate it?
+    // Let's assume new schema or handle migration on read.
+    // For safety, force object structure if it's array (very old legacy)
+    if (Array.isArray(player.upgrades)) {
+        player.upgrades = { clickLevel: 0, globalLevel: 0 };
+    }
+
+    let cost = 0;
+
+    // Logic must match frontend
+    if (key === 'click') {
+        const lvl = player.upgrades.clickLevel || 0;
+        cost = Math.floor(500 * Math.pow(2, lvl));
+    } else if (key === 'global') {
+        const lvl = player.upgrades.globalLevel || 0;
+        cost = Math.floor(50000 * Math.pow(1.5, lvl));
+    } else {
+        return res.status(400).json({ error: "Invalid upgrade type" });
+    }
+
+    if (player.balance >= cost) {
+        player.balance -= cost;
+        if (key === 'click') player.upgrades.clickLevel = (player.upgrades.clickLevel || 0) + 1;
+        if (key === 'global') player.upgrades.globalLevel = (player.upgrades.globalLevel || 0) + 1;
+
+        await db.collection('users').updateOne(
+            { handle: player.handle },
+            {
+                $set: {
+                    upgrades: player.upgrades,
+                    balance: player.balance
+                }
+            }
+        );
+        res.json({ success: true, player });
+    } else {
+        res.status(400).json({ success: false, reason: 'Insufficient funds' });
+    }
+});
+
+
 
 // PRESTIGE (Protected)
 app.post('/api/prestige', requireAuth, async (req, res) => {
