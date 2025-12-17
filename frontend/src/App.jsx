@@ -51,18 +51,7 @@ export default function App() {
   // Core Game Loop
   useGameLoop(100);
 
-  // Manager automation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const currentManagers = useGameStore.getState().managers;
-      if (currentManagers) {
-        Object.entries(currentManagers).forEach(([streamKey, isHired]) => {
-          if (isHired) buyStream(streamKey, 1);
-        });
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [buyStream]);
+
 
   // Leaderboard Sync
   useEffect(() => {
