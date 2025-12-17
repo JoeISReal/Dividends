@@ -109,6 +109,11 @@ export default function LeaderboardTab() {
                                     const h = u.handle || '';
                                     // Filter out the "naSo...Solx" or similar specific unwanted entries
                                     if (h.startsWith('naSo') || h.startsWith('NaSo') || h.includes('Solx')) return false;
+
+                                    // Blacklist
+                                    const d = u.displayName || '';
+                                    if (d.toLowerCase().includes('fsvn') || h.toLowerCase().includes('fsvn')) return false;
+
                                     return true;
                                 })
                                 .map((u, i) => (
