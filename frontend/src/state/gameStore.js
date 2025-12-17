@@ -779,24 +779,67 @@ export const useGameStore = create(
                             level: u.level || 1,
                         };
 
-                        // 3. Hydrate Streams (Merge Levels)
+                        // 3. Hydrate Managers
+                        const hydratedManagers = u.managers || {};
+
+                        // 4. Hydrate Streams (Merge Levels & Manager Status)
                         const currentStreams = get().streams; // Fresh from resetGame
                         const newStreams = { ...currentStreams };
 
+                        // Merge server stream levels
                         if (u.streams) {
                             Object.entries(u.streams).forEach(([key, lvl]) => {
                                 if (newStreams[key]) {
-                                    newStreams[key] = { ...newStreams[key], level: lvl };
+                                    newStreams[key] = {
+                                        ...newStreams[key],
+                                        level: lvl,
+                                        hasManager: !!hydratedManagers[key] // Sync hasManager status
+                                    };
                                 }
                             });
                         }
-                        patch.streams = newStreams;
 
-                        // 4. Recalculate YPS based on hydrated streams
+                        // Ensure any managers without stream levels also unlock hasManager?
+                        // (Edge case: Bought manager but owned 0 streams. Should still show hired)
+                        Object.keys(hydratedManagers).forEach(mgrKey => {
+                            if (hydratedManagers[mgrKey] && newStreams[mgrKey]) {
+                                newStreams[mgrKey] = {
+                                    ...newStreams[mgrKey],
+                                    hasManager: true
+                                };
+                            }
+                        });
+
+
+                        // 5. Hydrate Upgrades & Multipliers
+                        const hydratedUpgrades = {
+                            clickLevel: 0,
+                            globalLevel: 0,
+                            ...(u.upgrades || {}) // Merge backend upgrades
+                        };
+
+                        // Recalculate derived multipliers
+                        const newClickMult = 1 * Math.pow(2, hydratedUpgrades.clickLevel);
+                        const newGlobalMult = 1 * Math.pow(1.10, hydratedUpgrades.globalLevel); // Check game rule: 10% per level?
+                        // Actually check buyStream logic: multiplier * 1.1. So it's 1.1^level.
+                        const prestigeMult = u.multipliers?.prestige || 1;
+
+                        const hydratedMultipliers = {
+                            click: newClickMult,
+                            global: newGlobalMult,
+                            prestige: prestigeMult
+                        };
+
+                        patch.streams = newStreams;
+                        patch.managers = hydratedManagers;
+                        patch.upgrades = hydratedUpgrades;
+                        patch.multipliers = hydratedMultipliers;
+
+                        // 6. Recalculate YPS based on hydrated streams & multipliers
                         const tempState = { ...get(), ...patch };
                         patch.yps = calculateIncome(tempState, 1);
 
-                        // 5. Apply State
+                        // 7. Apply State
                         set(patch);
 
                         return { success: true };
