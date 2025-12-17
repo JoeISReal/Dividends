@@ -17,6 +17,8 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
     const prestigeMultiplier = useGameStore((s) => s.multipliers.prestige);
     const user = useGameStore((s) => s.auth.user);
     const marketStats = useGameStore((s) => s.marketStats);
+    const bagsStatusError = useGameStore((s) => s.bagsStatusError);
+    const fetchBagsStatus = useGameStore((s) => s.fetchBagsStatus);
 
     // Actions
     const registerClick = useGameStore((s) => s.registerClick);
