@@ -3,7 +3,7 @@ import React from 'react';
 
 export default function HelpTab() {
     return (
-        <div className="help-tab">
+        <div className="help-tab" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '120px' }}>
             <h2 className="main-title">📚 Game Guide</h2>
 
             {/* INTRO */}
@@ -40,37 +40,7 @@ export default function HelpTab() {
                 </div>
             </div>
 
-            {/* BAGS / HOLDER TIERS */}
-            <div className="help-section" style={{ borderColor: 'var(--accent-gold)' }}>
-                <h3>💎 Holder Tiers (Bags Integration)</h3>
-                <p>Hold the <strong>$DIVIDENDS</strong> token in your wallet to unlock exclusive status badges and multipliers.</p>
-                <div className="tier-grid" style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                    <div className="tier-row" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(0,0,0,0.2)', padding: 8, borderRadius: 6 }}>
-                        <span style={{ fontSize: 18 }}>🐋</span>
-                        <div>
-                            <strong style={{ color: '#00b4d8' }}>WHALE</strong>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Top 1% of Holders</div>
-                        </div>
-                    </div>
-                    <div className="tier-row" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(0,0,0,0.2)', padding: 8, borderRadius: 6 }}>
-                        <span style={{ fontSize: 18 }}>💪</span>
-                        <div>
-                            <strong style={{ color: '#76e176' }}>CHAD</strong>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Top 10% of Holders</div>
-                        </div>
-                    </div>
-                    <div className="tier-row" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(0,0,0,0.2)', padding: 8, borderRadius: 6 }}>
-                        <span style={{ fontSize: 18 }}>🦐</span>
-                        <div>
-                            <strong>TINY</strong>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Entry Level Holder</div>
-                        </div>
-                    </div>
-                </div>
-                <p style={{ fontSize: 12, marginTop: 10, fontStyle: 'italic', color: 'var(--text-muted)' }}>
-                    *Snapshot is taken every few hours. Ranks are dynamic based on total supply distribution.
-                </p>
-            </div>
+
 
             {/* DEGEN ARENA */}
             <div className="help-section">
@@ -99,9 +69,11 @@ export default function HelpTab() {
                 <h3>👑 Prestige</h3>
                 <p>Reset your game progress to earn a <strong>Permanent Global Multiplier</strong>.</p>
                 <ul>
-                    <li><strong>Reset:</strong> Cash, Streams, Upgrades.</li>
-                    <li><strong>Keep:</strong> Lifetime Yield Stats, Achievements.</li>
-                    <li><strong>Gain:</strong> Multiplier based on your YPS at time of reset.</li>
+                    <li><strong>Formula:</strong> Based on <strong>Lifetime Earnings</strong> (not current cash).</li>
+                    <li><strong>Threshold:</strong> You must earn at least <strong>$1,000,000</strong> lifetime to unlock the first tier.</li>
+                    <li><strong>Gain:</strong> Multiplier grows with the square root of your success. ($4M = 2x, $9M = 3x, etc).</li>
+                    <li><strong>Reset:</strong> Cash, Streams, Managers, Upgrades.</li>
+                    <li><strong>Keep:</strong> Lifetime Stats, Achievements, Player Level.</li>
                 </ul>
             </div>
 

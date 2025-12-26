@@ -1,0 +1,199 @@
+/* =========================================================
+   DIVIDENDS — DESIGN TOKENS (LOCKED)
+   ========================================================= */
+
+/* -------------------------
+   COLOR TOKENS
+-------------------------- */
+:root {
+    /* Core Backgrounds */
+    --bg-root: #07090d;
+    --bg-panel: #0d1117;
+    --bg-panel-soft: #111827;
+    --bg-panel-hard: #0b0f14;
+
+    /* Borders */
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-muted: rgba(255, 255, 255, 0.04);
+
+    /* Text */
+    --text-primary: #e6edf3;
+    --text-secondary: #9aa4b2;
+    --text-muted: #6b7280;
+
+    /* Accents (SINGLE SOURCE OF TRUTH) */
+    --accent-gold: #f5c77a;
+    /* progression, tiers */
+    --accent-green: #3ee6a0;
+    /* yield, positive */
+    --accent-red: #ef4444;
+    /* danger, loss */
+    --accent-blue: #3b82f6;
+    /* actions, links */
+
+    /* Shadows */
+    --shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* -------------------------
+   SPACING SCALE (8pt GRID)
+-------------------------- */
+:root {
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 16px;
+    --space-4: 24px;
+    --space-5: 32px;
+    --space-6: 48px;
+    --space-7: 64px;
+}
+
+/* -------------------------
+   TYPOGRAPHY
+-------------------------- */
+:root {
+    --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+    --text-xs: 12px;
+    --text-sm: 14px;
+    --text-md: 16px;
+    --text-lg: 20px;
+    --text-xl: 24px;
+    --text-2xl: 32px;
+}
+
+/* -------------------------
+   RADIUS SYSTEM
+-------------------------- */
+:root {
+    --radius-sm: 12px;
+    --radius-md: 14px;
+    --radius-lg: 16px;
+}
+
+/* -------------------------
+   MOTION
+-------------------------- */
+:root {
+    --motion-fast: 150ms;
+    --motion-base: 200ms;
+    --motion-slow: 250ms;
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* -------------------------
+   SURFACE PRESETS
+-------------------------- */
+
+/* Surface A — Primary */
+.surface-primary {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-panel);
+}
+
+/* Surface B — Secondary */
+.surface-secondary {
+    background: var(--bg-panel-soft);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-md);
+}
+
+/* Surface C — HUD / Meta */
+.surface-hud {
+    background: var(--bg-panel-hard);
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius-sm);
+    opacity: 0.95;
+}
+
+/* -------------------------
+   GLOW (RESTRICTED USE)
+-------------------------- */
+.glow-accent {
+    box-shadow: 0 0 0 1px rgba(245, 199, 122, 0.4);
+}
+
+/* -------------------------
+   BUTTON INTENT TIERS
+-------------------------- */
+
+/* PRIMARY ACTION: Progression, Unlocks (Strong Glow) */
+.btn-action-primary {
+    background: var(--accent-blue);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+    transition: all var(--motion-fast) var(--ease-standard);
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+    letter-spacing: 0.02em;
+}
+
+.btn-action-primary:hover {
+    filter: brightness(1.15);
+    transform: translateY(-1px);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+}
+
+/* ECONOMIC ACTION: Spend, Invest (Solid, Heavy) */
+.btn-action-economic {
+    background: rgb(30, 41, 59);
+    border: 1px solid var(--border-subtle);
+    color: var(--accent-green);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+    transition: all var(--motion-fast) var(--ease-standard);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-action-economic:hover {
+    background: rgb(40, 50, 70);
+    transform: translateY(-1px);
+    border-color: var(--accent-green);
+}
+
+/* META ACTION: Nav, Settings (Ghost/Outline) */
+.btn-action-meta {
+    background: transparent;
+    border: 1px solid var(--border-muted);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    padding: 8px 16px;
+    transition: all var(--motion-fast) var(--ease-standard);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.btn-action-meta:hover {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Legacy Alias for backward compat until full migration */
+.btn-primary {
+    composes: btn-action-primary;
+}
+
+button:active {
+    transform: scale(0.98) !important;
+}
+
+/* -------------------------
+   HIERARCHY UTILITIES
+-------------------------- */
+.surface-subordinate {
+    opacity: 0.85;
+    filter: grayscale(0.2);
+    transition: all 0.3s ease;
+}
+
+.surface-subordinate:hover {
+    opacity: 1;
+    filter: grayscale(0);
+}

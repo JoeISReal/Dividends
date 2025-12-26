@@ -12,6 +12,14 @@ export class Player {
         this.prestige = data.prestige || { multiplier: 1, resets: 0 };
         this.lastActive = data.lastActive || Date.now();
         this.startTime = data.startTime || Date.now();
+
+        // Phase B: XP & Fatigue
+        this.xp = data.xp || 0;
+        this.fatigue = data.fatigue || 0;
+        this.lastFatigueUpdate = data.lastFatigueUpdate || Date.now();
+
+        // Phase A: Stream Decay Tracking
+        this.streamAges = data.streamAges || {}; // { streamId: { ageSec: 0, lastTick: timestamp } }
     }
 
     static load() {

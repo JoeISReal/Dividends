@@ -84,7 +84,7 @@ export default function SettingsTab() {
                     Disconnecting will return you to the login screen. Your stats and upgrades are saved to your wallet address.
                 </p>
                 <button
-                    className="btn-secondary"
+                    className="btn-action-meta"
                     onClick={handleLogout}
                     style={{
                         padding: '10px 20px',
@@ -161,7 +161,7 @@ function DisplayNameEditor() {
                         }}
                     />
                     <button
-                        className="btn-primary"
+                        className="btn-action-primary"
                         onClick={handleSave}
                         disabled={loading || name === auth.user?.displayName}
                         style={{

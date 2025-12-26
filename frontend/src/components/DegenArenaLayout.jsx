@@ -45,7 +45,7 @@ export default function DegenArenaLayout({ chart, betPanel, liveDegens, balance,
                 <div className="da-prestige card">
                     <div className="da-label">Prestige Mult</div>
                     <div className="da-prestige-mult">x1.00</div>
-                    <button className="btn-primary da-prestige-btn">Prestige</button>
+                    <button className="btn-action-primary da-prestige-btn">Prestige</button>
                 </div>
             </aside>
 

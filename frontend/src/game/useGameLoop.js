@@ -57,6 +57,16 @@ export default function useGameLoop(tickMs = 100) {
                 addBalance(income);
             }
 
+            // 4. Process Fatigue & Decay
+            // We use static getState() inside loop via ref, but need to dispatch action.
+            // Action is on the store.
+            if (s.processFatigue) {
+                // Must call action from store, not state object if it's not bound?
+                // zustand state object usually has actions bound if defined in create().
+                // Yes, s.processFatigue should be callable.
+                s.processFatigue(dtSec);
+            }
+
             // Update UI YPS occasionally (every tick is fine for now, or throttle it)
             // We re-calc strictly to ensure UI matches reality
             // Optimization: Only do this if structure changed? No, easier to just calc.

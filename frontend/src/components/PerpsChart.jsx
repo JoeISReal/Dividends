@@ -39,6 +39,17 @@ const PerpsChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
     }), []);
 
     useEffect(() => {
+        const style = getComputedStyle(document.body);
+        const tokens = {
+            green: style.getPropertyValue('--accent-green').trim() || '#3bffb0',
+            red: style.getPropertyValue('--accent-red').trim() || '#ff6b81',
+            gold: style.getPropertyValue('--accent-gold').trim() || '#ffd700',
+            text: style.getPropertyValue('--text-secondary').trim() || '#888',
+            border: style.getPropertyValue('--border-subtle').trim() || 'rgba(255,255,255,0.1)',
+            bgPillGreen: 'rgba(59, 255, 176, 0.12)',
+            bgPillRed: 'rgba(255, 75, 106, 0.12)'
+        };
+
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d', { alpha: true });
 
@@ -192,9 +203,9 @@ const PerpsChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
                 const entryPrice = activePos.entryPrice;
                 const yEntry = yScale(entryPrice);
 
-                let color = '#888';
-                if (currentPrice > entryPrice) color = '#00FFA3';
-                else if (currentPrice < entryPrice) color = '#FF4B47';
+                let color = tokens.text;
+                if (currentPrice > entryPrice) color = tokens.green;
+                else if (currentPrice < entryPrice) color = tokens.red;
 
                 ctx.strokeStyle = color;
                 ctx.lineWidth = 2;
@@ -237,11 +248,11 @@ const PerpsChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
                 const yLow = yScale(c.low);
 
                 const isGreen = c.close >= c.open;
-                const bodyColor = isGreen ? '#00FFA3' : '#FF4B47';
-                const wickColor = isGreen ? '#00CC88' : '#D93636';
+                const bodyColor = isGreen ? tokens.green : tokens.red;
+                const wickColor = isGreen ? tokens.green : tokens.red; // Simplified
 
                 // Shadow
-                ctx.fillStyle = isGreen ? 'rgba(0, 255, 163, 0.1)' : 'rgba(255, 75, 71, 0.1)';
+                ctx.fillStyle = isGreen ? 'rgba(59, 255, 176, 0.1)' : 'rgba(255, 75, 106, 0.1)';
                 const bodyHeight = Math.abs(yClose - yOpen);
                 ctx.fillRect(x + candleWidth * 0.15, Math.min(yOpen, yClose) - 2, candleWidth * 0.7, bodyHeight + 4 || 1);
 
@@ -263,7 +274,7 @@ const PerpsChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
 
             // Current price line
             const yCurrentPrice = yScale(currentPrice);
-            ctx.strokeStyle = "rgba(0, 255, 163, 0.45)";
+            ctx.strokeStyle = 'rgba(59, 255, 176, 0.45)'; // Hard to match token exactly if we need transparency
             ctx.lineWidth = 1;
             ctx.setLineDash([5, 3]);
             ctx.beginPath();
@@ -279,8 +290,8 @@ const PerpsChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
                 const x = rawX + state.chartOffset;
                 const currentX = x + candleWidth / 2;
                 const currentY = yScale(currentPrice);
-                ctx.fillStyle = '#FFD700';
-                ctx.shadowColor = '#FFD700';
+                ctx.fillStyle = tokens.gold;
+                ctx.shadowColor = tokens.gold;
                 ctx.shadowBlur = 8;
                 ctx.beginPath();
                 ctx.arc(currentX, currentY, 5, 0, Math.PI * 2);
@@ -350,7 +361,7 @@ const PerpsChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
                 left: 16,
                 fontSize: '28px',
                 fontWeight: '900',
-                color: '#fff',
+                color: 'var(--text-primary)',
                 textShadow: '0 0 10px rgba(255,255,255,0.5)',
                 zIndex: 10
             }}>
@@ -362,13 +373,13 @@ const PerpsChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
                 position: 'absolute',
                 top: 12,
                 right: 12,
-                background: 'linear-gradient(135deg, rgba(0, 255, 163, 0.15), rgba(0, 204, 136, 0.2))',
-                border: '1px solid rgba(0, 255, 163, 0.3)',
-                borderRadius: '12px',
+                background: 'rgba(59, 255, 176, 0.1)',
+                border: '1px solid var(--accent-green)',
+                borderRadius: 'var(--radius-md)',
                 padding: '6px 12px',
                 fontSize: '13px',
                 fontWeight: 'bold',
-                color: '#00FFA3',
+                color: 'var(--accent-green)',
                 boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
                 zIndex: 10,
                 transition: 'all 0.3s ease',
@@ -388,16 +399,16 @@ const PerpsChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
                     borderRadius: '8px',
                     padding: '10px 12px',
                     fontSize: '11px',
-                    color: '#fff',
+                    color: 'var(--text-primary)',
                     zIndex: 15,
                     pointerEvents: 'none',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)'
                 }}>
-                    <div style={{ marginBottom: 4, color: '#888' }}>Candle #{hoverData.index + 1}</div>
-                    <div style={{ color: '#00FFA3' }}>O: {formatMoney(hoverData.open)}</div>
-                    <div style={{ color: '#00FFA3' }}>H: {formatMoney(hoverData.high)}</div>
-                    <div style={{ color: '#FF4B47' }}>L: {formatMoney(hoverData.low)}</div>
-                    <div style={{ color: hoverData.close >= hoverData.open ? '#00FFA3' : '#FF4B47' }}>
+                    <div style={{ marginBottom: 4, color: 'var(--text-secondary)' }}>Candle #{hoverData.index + 1}</div>
+                    <div style={{ color: 'var(--accent-green)' }}>O: {formatMoney(hoverData.open)}</div>
+                    <div style={{ color: 'var(--accent-green)' }}>H: {formatMoney(hoverData.high)}</div>
+                    <div style={{ color: 'var(--accent-red)' }}>L: {formatMoney(hoverData.low)}</div>
+                    <div style={{ color: hoverData.close >= hoverData.open ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                         C: {formatMoney(hoverData.close)}
                     </div>
                 </div>

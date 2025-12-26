@@ -1,51 +1,96 @@
 // Stream and Manager descriptions for the game
+// Synced with GameData.js IDs
+
 export const streamDescriptions = {
-    shitpost: {
-        name: "Shitpost Stream",
-        description: "Low-effort memes and hot takes. The foundation of any degen empire.",
-        managerName: "Meme Lord",
-        managerDescription: "A professional shitposter who never sleeps. Automatically generates engagement 24/7."
+    // 1. Stabilizer
+    microbags: {
+        name: 'Microbags Miner',
+        description: 'Farming dust in forgotten wallets.',
+        managerName: "Dust Sweeper",
+        managerDescription: "Automates collecting dust from thousands of wallets."
     },
-    engagement: {
-        name: "Engagement Farm",
-        description: "Reply guys, quote tweets, and strategic ratio attempts. Pure engagement farming.",
-        managerName: "Engagement Farmer",
-        managerDescription: "Knows every algorithm trick. Will farm engagement while you sleep."
+    liquidity_pool: {
+        name: 'Liquidity Pool',
+        description: 'Providing the exit liquidity.',
+        managerName: "LP Provider",
+        managerDescription: "Rebalances your pools to minimize impermanent loss."
     },
-    pump: {
-        name: "Pump Coordinator",
-        description: "Coordinate pumps, create FOMO, and ride the green candles to Valhalla.",
-        managerName: "Pump Captain",
-        managerDescription: "Has a sixth sense for pumps. Automatically coordinates moon missions."
+    dao_treasury: {
+        name: 'DAO Treasury',
+        description: 'Governance proposals for personal gain.',
+        managerName: "Gov Specialist",
+        managerDescription: "Writes proposals that always pass. For the community, of course."
     },
-    nft: {
-        name: "NFT Flipper",
-        description: "Flip JPEGs, ape into mints, and pray for royalties. WAGMI or NGMI.",
-        managerName: "NFT Degen",
-        managerDescription: "Professional floor sweeper. Flips NFTs faster than you can say 'right-click save'."
+
+    // 2. Volatile
+    leverage_frog: {
+        name: 'Leverage Frog',
+        description: '100x long on a hunch.',
+        managerName: "Pepe Trader",
+        managerDescription: "Smokes hopium and hits buy. Never sleeps."
     },
-    algo: {
-        name: "Algo Trading Bot",
-        description: "Automated trading strategies, backtested on hopium and copium.",
-        managerName: "Quant Wizard",
-        managerDescription: "PhD in losing money efficiently. Runs algos that definitely won't blow up your account."
+    meme_farm: {
+        name: 'Meme Farm',
+        description: 'Harvesting likes for liquidity.',
+        managerName: "Page Admin",
+        managerDescription: "Reposts content from Reddit to Twitter 24/7."
     },
-    sentiment: {
-        name: "Sentiment Analysis",
-        description: "Read the vibes, analyze the hopium, and front-run the narrative shifts.",
-        managerName: "Vibe Checker",
-        managerDescription: "Can smell a rug from miles away. Analyzes sentiment while you touch grass."
+    arb_node: {
+        name: 'On-chain Arb Node',
+        description: 'Front-running the front-runners.',
+        managerName: "MEV Bot",
+        managerDescription: "Sandwiches transactions automatically. Ruthless efficiency."
+    },
+
+    // 3. Synergy
+    chart_whisperer: {
+        name: 'Chart Whisperer',
+        description: 'Drawing triangles on random screenshots.',
+        managerName: "TA Guru",
+        managerDescription: "Predicts the market moving to the right 100% of the time."
+    },
+    trading_bot: {
+        name: 'Trading Bot Rack',
+        description: 'Beep boop money printer.',
+        managerName: "Server Tech",
+        managerDescription: "Keeps the servers cool and the bots running."
+    },
+    validator: {
+        name: 'Validator Node',
+        description: 'Securing the network (and the bag).',
+        managerName: "Node Operator",
+        managerDescription: "Ensures 99.99% uptime so you never get slashed."
+    },
+
+    // 4. Decay
+    whale_tracker: {
+        name: 'Whale Tracker',
+        description: 'Stalking big wallets on Etherscan.',
+        managerName: "Chain Detective",
+        managerDescription: "Alerts you the moment a whale sneezes."
+    },
+    cex_pipeline: {
+        name: 'CEX Pipeline',
+        description: 'Direct line to the exchange listing team.',
+        managerName: "Listing Agent",
+        managerDescription: "Knows a guy who knows a guy at Binance."
+    },
+    central_bank: {
+        name: 'Central Bank',
+        description: 'Just printing it directly.',
+        managerName: "Fed Chairman",
+        managerDescription: "Money printer go BRRRR automatically."
     }
 };
 
 export const upgradeDescriptions = {
     click: {
         name: "Click Power",
-        description: "Double your FARM button yield. For when you want to grind manually like it's 2010."
+        description: "Double your FARM button yield. For when you want to grind manually."
     },
     global: {
         name: "Global Multiplier",
-        description: "10% boost to ALL income streams. The closest thing to free money in this economy."
+        description: "10% boost to ALL income streams. Compound your gains."
     }
 };
 

@@ -155,38 +155,38 @@ export default function DegenArenaPage() {
     };
 
     return (
-        <div className="degen-arena-page" style={{ height: '100%', display: 'flex', flexDirection: 'column', paddingBottom: 16 }}>
+        <div className="degen-arena-page" style={{ height: '100%', display: 'flex', flexDirection: 'column', paddingBottom: 'var(--space-4)' }}>
             {/* Header / Stats */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+                    <div style={{ fontSize: 'var(--text-xl)', fontWeight: 900, display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--text-primary)' }}>
                         <span>🎰 DEGEN ARENA</span>
                     </div>
 
                     {/* XP BAR */}
                     <div style={{
                         background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        border: '1px solid var(--border-subtle)',
                         padding: '4px 12px',
-                        borderRadius: 20,
-                        fontSize: 12,
+                        borderRadius: 'var(--radius-full)',
+                        fontSize: 'var(--text-xs)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 12
+                        gap: 'var(--space-3)'
                     }}>
-                        <span style={{ color: '#fff', fontWeight: 'bold' }}>Lvl {level}</span>
-                        <span>XP: {xp} / {xp + xpToNext}</span>
+                        <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>Lvl {level}</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>XP: {xp} / {xp + xpToNext}</span>
                         <div style={{
                             width: '60px',
                             height: '4px',
-                            background: '#333',
+                            background: 'rgba(255,255,255,0.1)',
                             borderRadius: '2px',
                             overflow: 'hidden'
                         }}>
                             <div style={{
-                                width: `${(1 - (xpToNext / 1000)) * 100}%`,
+                                width: `${(xp / (xp + xpToNext)) * 100}%`,
                                 height: '100%',
-                                background: '#44ffb0'
+                                background: 'var(--accent-green)'
                             }} />
                         </div>
                     </div>
@@ -198,33 +198,25 @@ export default function DegenArenaPage() {
             </div>
 
             {/* MAIN GRIDS */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) 340px',
-                gap: '20px',
-                flex: 1, // Fill available space
-                minHeight: 0, // Allow flex child to scroll
-            }}>
+            <div className="arena-grid">
 
                 {/* LEFT COLUMN: CHART + HISTORY */}
                 <div style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 16,
+                    gap: 'var(--space-4)',
                     height: '100%',
-                    minHeight: 0 // Crucial for nested scroll
+                    minHeight: 0
                 }}>
 
                     {/* CHART AREA - Expandable */}
-                    <div style={{
-                        flex: '2 1 400px', // Grow 2x, shrink 1x, basis 400px
-                        background: '#13141b',
-                        borderRadius: 16,
+                    <div className="surface-primary" style={{
+                        flex: '2 1 400px',
+                        borderRadius: 'var(--radius-lg)',
                         overflow: 'hidden',
                         position: 'relative',
-                        boxShadow: '0 12px 24px rgba(0,0,0,0.5)',
-                        border: '1px solid rgba(255,255,255,0.05)',
-                        minHeight: '400px'
+                        minHeight: '400px',
+                        padding: 0 /* Reset padding for canvas full fill */
                     }}>
                         <DegenChart
                             ref={chartRef}
@@ -240,8 +232,8 @@ export default function DegenArenaPage() {
                             padding: "6px 12px",
                             background: "rgba(0,0,0,0.6)",
                             backdropFilter: "blur(4px)",
-                            color: roundStability > 50 ? "#4ade80" : roundStability > 20 ? "#facc15" : "#ef4444",
-                            borderRadius: 8,
+                            color: roundStability > 50 ? "var(--accent-green)" : roundStability > 20 ? "var(--accent-gold)" : "var(--accent-red)",
+                            borderRadius: 'var(--radius-md)',
                             fontSize: 14,
                             fontWeight: 700,
                             border: "1px solid rgba(255,255,255,0.1)",
@@ -255,21 +247,20 @@ export default function DegenArenaPage() {
                     </div>
 
                     {/* TRADE HISTORY - Fill remaining */}
-                    <div style={{
-                        flex: '1 1 200px', // Grow 1x
-                        background: '#13141b',
-                        borderRadius: 16,
-                        border: '1px solid rgba(255,255,255,0.05)',
+                    <div className="surface-secondary" style={{
+                        flex: '1 1 200px',
+                        borderRadius: 'var(--radius-lg)',
                         display: 'flex',
                         flexDirection: 'column',
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        padding: 0
                     }}>
                         <div style={{
                             padding: '12px 16px',
-                            borderBottom: '1px solid rgba(255,255,255,0.05)',
-                            fontSize: 12,
+                            borderBottom: '1px solid var(--border-subtle)',
+                            fontSize: 'var(--text-xs)',
                             fontWeight: 600,
-                            color: 'rgba(255,255,255,0.5)',
+                            color: 'var(--text-secondary)',
                             textTransform: 'uppercase',
                             letterSpacing: '0.5px'
                         }}>
@@ -300,13 +291,14 @@ export default function DegenArenaPage() {
                     <div style={{
                         marginTop: 16,
                         padding: 16,
-                        background: 'rgba(255,255,255,0.03)',
+                        background: 'var(--bg-panel-soft)',
                         borderRadius: 12,
-                        fontSize: 12,
-                        color: 'rgba(255,255,255,0.4)',
-                        lineHeight: 1.5
+                        fontSize: 'var(--text-xs)',
+                        color: 'var(--text-secondary)',
+                        lineHeight: 1.5,
+                        border: '1px solid var(--border-subtle)'
                     }}>
-                        <strong style={{ color: '#fff' }}>How to play:</strong>
+                        <strong style={{ color: 'var(--text-primary)' }}>How to play:</strong>
                         <ul style={{ paddingLeft: 16, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                             <li>Watch the chart and stability meter.</li>
                             <li>Buy when you think it will pump.</li>

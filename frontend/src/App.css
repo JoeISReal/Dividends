@@ -1,10 +1,6 @@
 /* frontend/src/App.css */
-:root {
-  --bg: #0f172a;
-  --panel: #0b1220;
-  --accent: #3f8cff;
-  --muted: #9aa0ad;
-}
+/* frontend/src/App.css */
+/* TOKENS ARE IMPORTED IN INDEX.CSS */
 
 html,
 body,
@@ -12,9 +8,9 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: system-ui, Arial;
-  background: var(--bg);
-  color: #e6edf3;
+  font-family: var(--font-sans);
+  background: var(--bg-root);
+  color: var(--text-primary);
 }
 
 .app-wrap {
@@ -95,4 +91,36 @@ body,
   height: 100%;
   background: var(--accent);
   border-radius: 8px;
+}
+
+/* Post-Login Transition */
+.login-card {
+  transition: transform 0.6s ease, opacity 0.6s ease, filter 0.6s ease;
+}
+
+.login-card.success {
+  transform: scale(0.96);
+  opacity: 0;
+  filter: blur(12px);
+  pointer-events: none;
+}
+
+.boot-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(15, 15, 25, 0.95), rgba(5, 5, 8, 1));
+  display: grid;
+  place-items: center;
+  color: #a7f3d0;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  z-index: 9999;
+  animation: fadeOut 0.8s ease forwards;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    pointer-events: none;
+  }
 }

@@ -1,12 +1,9 @@
 // src/game/incomeEngineFixed.js
+import { STREAMS } from '../data/GameData';
 
 /**
  * Calculates the passive income for a single tick.
- * 
- * STRICT RULES:
- * 1. Streams produce 0 passive income unless 'hasManager' is true.
- * 2. Manual clicks are handled separately (in gameStore).
- * 3. This function relies on a pure state snapshot.
+ * Matches Backend Economy.js logic (Phase A + B).
  * 
  * @param {Object} state - The current game state (from Zustand)
  * @param {number} dtSeconds - Delta time in seconds for this tick
@@ -17,74 +14,95 @@ export function calculateIncome(state, dtSeconds) {
 
     let totalIncome = 0;
 
-    // Iterate through all streams in the state
-    const streams = Array.isArray(state.streams)
-        ? state.streams
-        : Object.entries(state.streams).map(([key, val]) => ({ ...val, id: key }));
+    // Helper to get stream quantity
+    const getQty = (id) => {
+        const s = state.streams[id];
+        if (!s) return 0;
+        return Number(s.level || s.owned || 0);
+    };
+
+    // 1. Calculate Volatility & Stability (For Synergy)
+    let stability = 100;
+    let volatility = 1.0;
+
+    // We used to iterate state.streams. Now we iterate STREAMS definition ensures we have metadata.
+    // But we need to check if we own them in state.
+    STREAMS.forEach(meta => {
+        const qty = getQty(meta.id);
+        if (qty > 0) {
+            if (meta.stabilityImpact) stability += (meta.stabilityImpact * qty);
+            if (meta.volatilityModifier) volatility += (meta.volatilityModifier * qty);
+        }
+    });
+    stability = Math.max(0, stability);
+    volatility = Math.max(0.1, volatility);
 
 
-    for (const stream of streams) {
-        // FAILSAFE 1: If count/owned is 0, no income.
-        const count = Number(stream.owned || stream.level || 0);
-        if (isNaN(count) || count <= 0) continue;
+    // 2. Calculate Yield
+    STREAMS.forEach(meta => {
+        const streamState = state.streams[meta.id];
+        if (!streamState) return;
 
-        // FAILSAFE 2: If no manager, STRICTLY NO PASSIVE INCOME.
-        const hasManager = stream.hasManager === true || (state.managers && state.managers[stream.id] === true);
+        const count = Number(streamState.level || 0);
+        if (count <= 0) return;
 
-        if (!hasManager) {
-            continue;
+        // Manager Check
+        const hasManager = streamState.hasManager === true || (state.managers && state.managers[meta.id] === true);
+        if (!hasManager) return;
+
+        let streamYield = meta.baseYield * count;
+
+        // A. Decay
+        if (meta.category === 'decay' && meta.decayRate) {
+            const ageInfo = state.streamAges ? state.streamAges[meta.id] : null;
+            const ageSec = ageInfo ? ageInfo.ageSec : 0;
+            // Formula: Math.exp(-rate * minutes)
+            const decayFactor = Math.exp(-meta.decayRate * (ageSec / 60));
+            streamYield *= decayFactor;
         }
 
-        // Calculate base yield for this stream
-        const cycleTime = Number(stream.baseTime || 1);
-        const baseYield = Number(stream.baseYield || stream.baseYps || 0);
+        // B. Synergy
+        if (meta.category === 'synergy' && meta.synergyTags) {
+            let synergyBonus = 0;
 
-        let rawYield = (baseYield * count) / (cycleTime > 0 ? cycleTime : 1);
-
-        if (isNaN(rawYield)) rawYield = 0;
-
-        // Apply Multipliers
-        let multiplier = 1;
-
-        // 1. Unlocks (milestones)
-        if (stream.unlocks && Array.isArray(stream.unlocks)) {
-            for (const unlock of stream.unlocks) {
-                const uOwned = Number(unlock.owned || 0);
-                if (count >= uOwned && unlock.type === 'profit') {
-                    multiplier *= Number(unlock.multiplier || 1);
-                }
+            if (meta.synergyTags.includes('volatility_boost')) {
+                if (volatility > 1.0) synergyBonus += (volatility - 1.0);
             }
+            if (meta.synergyTags.includes('volume_scale')) {
+                // Count total levels
+                const totalLevels = Object.values(state.streams).reduce((acc, s) => acc + (s.level || 0), 0);
+                if (totalLevels > 50) synergyBonus += 0.2;
+            }
+            if (meta.synergyTags.includes('stake_multiplier')) {
+                if (getQty('liquidity_pool') > 0) synergyBonus += 0.1;
+                if (getQty('dao_treasury') > 0) synergyBonus += 0.15;
+            }
+
+            streamYield *= (1 + synergyBonus);
         }
 
-        // 2. Global Multipliers (from upgrades/prestige)
+        // C. Upgrades (Frontend Store usually has simpler upgrade logic 'click' vs 'global')
+        // But backend `Economy.js` checks specific upgrades. 
+        // Frontend `gameStore` only tracks `globalLevel` and `clickLevel`.
+        // If we want 100% parity, we need specific per-stream upgrades on frontend too.
+        // For now, apply GLOBAL multiplier.
         if (state.multipliers) {
-            multiplier *= Number(state.multipliers.global || 1);
-            multiplier *= Number(state.multipliers.prestige || 1);
+            streamYield *= Number(state.multipliers.global || 1);
+            streamYield *= Number(state.multipliers.prestige || 1);
         }
 
-        // 3. Upgrade Catalog
+        // Apply specific stream boost from upgrades if they exist in state
+        // (Legacy logic handling)
         if (state.upgrades) {
-            if (state.upgrades['global_mult']) {
-                const lvl = Number(state.upgrades['global_mult'] || 0);
-                multiplier *= (1 + 0.1 * lvl);
-            }
-            // Stream specific boost
-            const streamBoostKey = `${stream.id}_mult`;
+            const streamBoostKey = `${meta.id}_mult`;
             if (state.upgrades[streamBoostKey]) {
-                const lvl = Number(state.upgrades[streamBoostKey] || 0);
-                multiplier *= (1 + 0.5 * lvl);
+                const lvl = Number(state.upgrades[streamBoostKey]);
+                streamYield *= (1 + 0.5 * lvl);
             }
         }
 
-        if (state.shareholderMultiplier) {
-            multiplier *= Number(state.shareholderMultiplier || 1);
-        }
+        totalIncome += streamYield;
+    });
 
-        if (isNaN(multiplier)) multiplier = 1;
-
-        totalIncome += (rawYield * multiplier);
-    }
-
-    const finalVal = totalIncome * Number(dtSeconds || 0);
-    return isNaN(finalVal) ? 0 : finalVal;
+    return totalIncome * (dtSeconds || 0);
 }

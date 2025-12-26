@@ -1,16 +1,150 @@
 export const STREAMS = [
-    { id: 'microbags', name: 'Microbags Miner', baseCost: 10, baseYield: 1, costMultiplier: 1.07, description: 'Farming dust in forgotten wallets.' },
-    { id: 'chart_whisperer', name: 'Chart Whisperer', baseCost: 100, baseYield: 5, costMultiplier: 1.10, description: 'Drawing triangles on random screenshots.' },
-    { id: 'leverage_frog', name: 'Leverage Frog', baseCost: 1100, baseYield: 32, costMultiplier: 1.12, description: '100x long on a hunch.' },
-    { id: 'meme_farm', name: 'Meme Farm', baseCost: 12000, baseYield: 120, costMultiplier: 1.13, description: 'Harvesting likes for liquidity.' },
-    { id: 'whale_tracker', name: 'Whale Tracker', baseCost: 130000, baseYield: 450, costMultiplier: 1.14, description: 'Stalking big wallets on Etherscan.' },
-    { id: 'trading_bot', name: 'Trading Bot Rack', baseCost: 1400000, baseYield: 1500, costMultiplier: 1.15, description: 'Beep boop money printer.' },
-    { id: 'cex_pipeline', name: 'CEX Pipeline', baseCost: 20000000, baseYield: 5000, costMultiplier: 1.15, description: 'Direct line to the exchange listing team.' },
-    { id: 'arb_node', name: 'On-chain Arb Node', baseCost: 330000000, baseYield: 18000, costMultiplier: 1.15, description: 'Front-running the front-runners.' },
-    { id: 'liquidity_pool', name: 'Liquidity Pool', baseCost: 5100000000, baseYield: 65000, costMultiplier: 1.15, description: 'Providing the exit liquidity.' },
-    { id: 'validator', name: 'Validator Node', baseCost: 75000000000, baseYield: 250000, costMultiplier: 1.15, description: 'Securing the network (and the bag).' },
-    { id: 'dao_treasury', name: 'DAO Treasury', baseCost: 1000000000000, baseYield: 1000000, costMultiplier: 1.15, description: 'Governance proposals for personal gain.' },
-    { id: 'central_bank', name: 'Central Bank', baseCost: 14000000000000, baseYield: 5000000, costMultiplier: 1.15, description: 'Just printing it directly.' }
+    // 1. Stabilizer Streams (Low Yield, Positive Stability)
+    {
+        id: 'microbags',
+        name: 'Microbags Miner',
+        baseCost: 10,
+        baseYield: 1,
+        costMultiplier: 1.07,
+        description: 'Farming dust in forgotten wallets.',
+        category: 'stabilizer',
+        stabilityImpact: 1,
+        volatilityModifier: 0
+    },
+    {
+        id: 'liquidity_pool',
+        name: 'Liquidity Pool',
+        baseCost: 5100000000,
+        baseYield: 65000,
+        costMultiplier: 1.15,
+        description: 'Providing the exit liquidity.',
+        category: 'stabilizer',
+        stabilityImpact: 50,
+        volatilityModifier: -0.05
+    },
+    {
+        id: 'dao_treasury',
+        name: 'DAO Treasury',
+        baseCost: 1000000000000,
+        baseYield: 1000000,
+        costMultiplier: 1.15,
+        description: 'Governance proposals for personal gain.',
+        category: 'stabilizer',
+        stabilityImpact: 150,
+        volatilityModifier: -0.1
+    },
+
+    // 2. Volatile Streams (High Yield, Negative Stability)
+    {
+        id: 'leverage_frog',
+        name: 'Leverage Frog',
+        baseCost: 1100,
+        baseYield: 32,
+        costMultiplier: 1.12,
+        description: '100x long on a hunch.',
+        category: 'volatile',
+        stabilityImpact: -5,
+        volatilityModifier: 0.1
+    },
+    {
+        id: 'meme_farm',
+        name: 'Meme Farm',
+        baseCost: 12000,
+        baseYield: 120,
+        costMultiplier: 1.13,
+        description: 'Harvesting likes for liquidity.',
+        category: 'volatile',
+        stabilityImpact: -15,
+        volatilityModifier: 0.2
+    },
+    {
+        id: 'arb_node',
+        name: 'On-chain Arb Node',
+        baseCost: 3300000000,
+        baseYield: 18000,
+        costMultiplier: 1.15,
+        description: 'Front-running the front-runners.',
+        category: 'volatile',
+        stabilityImpact: -100,
+        volatilityModifier: 0.5
+    },
+
+    // 3. Synergy Streams (Bonus if conditions met)
+    {
+        id: 'chart_whisperer',
+        name: 'Chart Whisperer',
+        baseCost: 100,
+        baseYield: 5,
+        costMultiplier: 1.10,
+        description: 'Drawing triangles on random screenshots.',
+        category: 'synergy',
+        stabilityImpact: 0,
+        volatilityModifier: 0,
+        synergyTags: ['volatility_boost']
+    },
+    {
+        id: 'trading_bot',
+        name: 'Trading Bot Rack',
+        baseCost: 1400000,
+        baseYield: 1500,
+        costMultiplier: 1.15,
+        description: 'Beep boop money printer.',
+        category: 'synergy',
+        stabilityImpact: -20,
+        volatilityModifier: 0.1,
+        synergyTags: ['volume_scale']
+    },
+    {
+        id: 'validator',
+        name: 'Validator Node',
+        baseCost: 75000000000,
+        baseYield: 250000,
+        costMultiplier: 1.15,
+        description: 'Securing the network (and the bag).',
+        category: 'synergy',
+        stabilityImpact: 20,
+        volatilityModifier: -0.02,
+        synergyTags: ['stake_multiplier']
+    },
+
+
+    // 4. Decay Streams (High initial yield, decays over time)
+    {
+        id: 'whale_tracker',
+        name: 'Whale Tracker',
+        baseCost: 130000,
+        baseYield: 450,
+        costMultiplier: 1.14,
+        description: 'Stalking big wallets on Etherscan.',
+        category: 'decay',
+        stabilityImpact: -2,
+        volatilityModifier: 0.05,
+        decayRate: 0.01 // 1% decay per tick/minute/action
+    },
+    {
+        id: 'cex_pipeline',
+        name: 'CEX Pipeline',
+        baseCost: 20000000,
+        baseYield: 5000,
+        costMultiplier: 1.15,
+        description: 'Direct line to the exchange listing team.',
+        category: 'decay',
+        stabilityImpact: -10,
+        volatilityModifier: 0.1,
+        decayRate: 0.05
+    },
+    {
+        id: 'central_bank',
+        name: 'Central Bank',
+        baseCost: 14000000000000,
+        baseYield: 5000000,
+        costMultiplier: 1.15,
+        description: 'Just printing it directly.',
+        category: 'decay',
+        stabilityImpact: -500,
+        volatilityModifier: 1.0,
+        decayRate: 0.1
+    }
 ];
 
 export const UPGRADES = [

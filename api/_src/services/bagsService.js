@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { chaos } from './chaos.js';
 import * as marketService from './marketService.js';
+import * as jupiterService from './jupiterService.js';
 
 // Configuration
 const DIVIDENDS_MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
@@ -83,15 +84,39 @@ export function getHolderTier(walletAddress) {
 /**
  * public: Get the current leaderboard/stats
  */
-export function getLeaderboard() {
+export async function getLeaderboard() {
     if (!_currentSnapshot) return { updated: null, topHolders: [] };
 
+    // 1. Get raw top holders (up to 100)
+    const topRaw = _currentSnapshot.sortedHolders.slice(0, 100);
+    const wallets = topRaw.map(h => h.wallet);
+
+    // 2. Fetch Display Names from DB
+    const userMap = {};
+    if (_db) {
+        try {
+            const users = await _db.collection('users')
+                .find({ handle: { $in: wallets } })
+                .project({ handle: 1, displayName: 1 })
+                .toArray();
+
+            users.forEach(u => {
+                if (u.displayName) userMap[u.handle] = u.displayName;
+            });
+        } catch (e) {
+            console.error("[BagsService] User mapping failed:", e);
+        }
+    }
+
+    // 3. Merge & Return
     return {
         updatedAt: _currentSnapshot.timestamp,
-        topHolders: _currentSnapshot.sortedHolders.slice(0, 50).map(h => ({
+        topHolders: topRaw.map(h => ({
             wallet: h.wallet,
+            username: userMap[h.wallet] || null, // New field
             tier: calculateTier(h.balance),
-            balanceApprox: h.balance
+            balanceApprox: h.balance,
+            share: (h.balance / 1000000000) * 100
         }))
     };
 }
@@ -123,14 +148,37 @@ export function getEcosystemMood() {
     };
 }
 
+/**
+ * public: Get Trending Tokens (Proxy to Market Service for now)
+ * Returns a list of trending tokens in the ecosystem
+ */
+export async function getTrendingTokens() {
+    // Fallback to Jupiter/Market service until specific Bags Trending endpoint is confirmed
+    // The user wants "what's trending on the bags app", which is effectively market trending data for now.
+    try {
+        const trending = await jupiterService.fetchTrendingTokens();
+        return trending || [];
+    } catch (e) {
+        console.error("[BagsService] Failed to fetch trending:", e);
+        return [];
+    }
+}
+
 // --- Internal Logic ---
 
 function calculateTier(balance) {
-    if (balance <= 0) return 'NONE';
-    if (balance >= _tierThresholds.whale) return 'WHALE';
-    if (balance >= _tierThresholds.chad) return 'CHAD';
-    if (balance >= _tierThresholds.medium) return 'MEDIUM';
-    return 'TINY';
+    if (balance <= 0) return 'none';
+
+    // Explicit / Hardcoded Tiers (High End)
+    if (balance >= 10000000) return 'authority';
+    if (balance >= 1000000) return 'inner_circle';
+    if (balance >= 250000) return 'shark';
+
+    // Dynamic Tiers (Relative to distribution)
+    if (balance >= _tierThresholds.whale) return 'whale';
+    if (balance >= _tierThresholds.chad) return 'chad'; // Note: CHAD not in registry yet? Registry had CONTRIBUTOR?
+    if (balance >= _tierThresholds.medium) return 'contributor'; // Mapping MEDIUM -> CONTRIBUTOR for safety if MEDIUM doesn't exist
+    return 'holder'; // Default fallthrough for > 0
 }
 
 async function loadLatestSnapshot() {
@@ -241,46 +289,56 @@ async function refreshSnapshot() {
     console.log(`[BagsService] Snapshot refreshed. Mood: ${metrics.mood} Tags: ${metrics.tags?.join(',')}`);
 }
 
+const FALLBACK_RPCS = [
+    "https://api.mainnet-beta.solana.com",
+    "https://rpc.ankr.com/solana",
+    "https://solana-mainnet.rpc.extrnode.com"
+];
+
 async function fetchHoldersFromRPC() {
-    const rpcUrl = process.env.SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
-    const connection = new Connection(rpcUrl, 'confirmed');
+    const primary = process.env.SOLANA_RPC_URL;
+    const targets = primary ? [primary, ...FALLBACK_RPCS] : FALLBACK_RPCS;
 
-    try {
-        console.log(`[BagsService] Fetching holders via RPC...`);
-        const accounts = await connection.getParsedProgramAccounts(
-            TOKEN_PROGRAM_ID,
-            {
-                filters: [
-                    {
-                        dataSize: 165,
-                    },
-                    {
-                        memcmp: {
-                            offset: 0,
-                            bytes: DIVIDENDS_MINT,
-                        },
-                    },
-                ],
-            }
-        );
+    for (const rpcUrl of targets) {
+        try {
+            if (!rpcUrl) continue;
+            console.log(`[BagsService] Fetching holders via RPC: ${rpcUrl}...`);
 
-        const holders = accounts.map(account => {
-            const parsedInfo = account.account.data.parsed.info;
-            const balance = parsedInfo.tokenAmount.uiAmount;
-            const wallet = parsedInfo.owner;
-            return { wallet, balance };
-        }).filter(h => h.balance > 0); // Exclude empty accounts
+            const connection = new Connection(rpcUrl, 'confirmed');
 
-        console.log(`[BagsService] Fetched ${holders.length} holders.`);
-        return holders;
+            // Set timeout for connection manually if possible, or trust web3.js default
+            // web3.js connection doesn't support timeout in constructor easily, 
+            // but the fetch underneath might. We'll rely on try/catch.
 
-    } catch (e) {
-        console.error("[BagsService] RPC Fetch Error:", e);
-        // Fallback or rethrow? 
-        // Logic says "If RPC fails: keep last snapshot, log warning".
-        // Returning null will trigger the skip in refreshSnapshot.
-        return null;
+            const accounts = await connection.getParsedProgramAccounts(
+                TOKEN_PROGRAM_ID,
+                {
+                    filters: [
+                        { dataSize: 165 },
+                        { memcmp: { offset: 0, bytes: DIVIDENDS_MINT } },
+                    ],
+                }
+            );
+
+            const holders = accounts.map(account => {
+                const parsedInfo = account.account.data.parsed.info;
+                return {
+                    wallet: parsedInfo.owner,
+                    balance: parsedInfo.tokenAmount.uiAmount
+                };
+            }).filter(h => h.balance > 0);
+
+            console.log(`[BagsService] Success via ${rpcUrl}! Fetched ${holders.length} holders.`);
+            return holders;
+
+        } catch (e) {
+            console.warn(`[BagsService] RPC Attempt Failed (${rpcUrl}): ${e.message}`);
+            // Continue to next
+        }
     }
+
+    console.error("[BagsService] All RPC attempts failed.");
+    return null;
 }
 
 function analyzeSnapshot(currentHolders, previousSnapshot, volume24h) {

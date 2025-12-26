@@ -186,14 +186,35 @@ body {
 
 /* === 6. PILLS & BADGES === */
 .pill {
-    display: inline-flex;
-    align-items: center;
-    padding: 6px 12px;
-    border-radius: var(--radius-pill);
-    background: rgba(12, 14, 18, 0.7);
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border);
-    font-size: 12px;
-    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 999px;
+    color: var(--text-med);
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: center;
+}
+
+.pill:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-high);
+    border-color: var(--text-med);
+}
+
+.pill.active,
+.pill-gold {
+    background: var(--gold);
+    color: #000;
+    font-weight: 800;
+    box-shadow: 0 0 12px rgba(234, 179, 8, 0.5);
+    border-color: var(--gold-light);
+    transform: translateY(-1px);
 }
 
 .pill-green {
@@ -204,11 +225,6 @@ body {
 .pill-red {
     color: #FF708A;
     border-color: rgba(255, 75, 106, 0.3);
-}
-
-.pill-gold {
-    color: var(--gold-light);
-    border-color: rgba(247, 209, 109, 0.3);
 }
 
 /* === 7. CHART CONTAINER === */
@@ -309,12 +325,10 @@ body {
 /* === 10. ABSTRACT BACKGROUNDS === */
 
 /* Hero Background - Full screen */
+/* Hero Background - Full screen */
 .bg-abstract-hero {
-    background-image: url('/backgrounds/abstract-money-hero-4k.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    background: #05070c;
+    /* Money image removed as requested */
 }
 
 /* Tile Background - Repeating pattern */
@@ -342,4 +356,179 @@ body {
 .bg-overlay>* {
     position: relative;
     z-index: 1;
+}
+
+/* === 11. UTILITY ANIMATIONS === */
+
+@keyframes scanline {
+    0% {
+        transform: translateY(-100%);
+    }
+
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+.anim-scanline::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(to bottom, transparent, rgba(59, 255, 161, 0.1), transparent);
+    animation: scanline 2.5s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-entry {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+
+/* === 12. CAPITAL RECOVERY PANEL === */
+
+.capital-recovery {
+    padding: 16px 18px;
+    margin-top: 16px;
+    border-left: 2px solid var(--border);
+    /* using --border from this file */
+}
+
+.capital-header {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 12px;
+}
+
+.capital-header h3 {
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    font-weight: 600;
+    color: var(--text-high);
+    margin: 0;
+}
+
+.capital-subtext {
+    font-size: 12px;
+    color: var(--text-low);
+}
+
+.capital-body {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: center;
+}
+
+.capital-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.capital-metric .label {
+    font-size: 12px;
+    color: var(--text-low);
+}
+
+.capital-metric .value {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: monospace;
+    color: var(--gold);
+}
+
+.capital-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.capital-actions button {
+    min-width: 200px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    white-space: nowrap;
+    /* Missing base button styles? No, classes below handle it */
+}
+
+.btn-hint {
+    font-size: 11px;
+    color: var(--text-low);
+    font-weight: 400;
+}
+
+.capital-footer {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-low);
+    opacity: 0.7;
+}
+
+/* Disabled authority feel */
+.capital-actions button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* === MISSING BUTTON CLASSES === */
+/* These were expected by the component but not in degen-wealth.css */
+
+.btn-action-economic {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-high);
+    border-radius: var(--radius-button);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-action-economic:hover:not(:disabled) {
+    background: var(--bg-hover);
+    border-color: var(--text-med);
+}
+
+.btn-action-primary {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border);
+    color: var(--text-high);
+    border-radius: var(--radius-button);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-action-primary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
 }

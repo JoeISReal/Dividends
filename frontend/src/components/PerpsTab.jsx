@@ -142,20 +142,27 @@ export default function PerpsTab() {
     };
 
     return (
-        <div className="perps-tab">
+        <div className="perps-tab" style={{ padding: 'var(--space-4)' }}>
             {/* Header & Stats */}
-            <div className="perps-header">
-                <h2>🎰 Degen Arena</h2>
-                <div className="perps-stats">
+            <div className="perps-header" style={{ marginBottom: 'var(--space-4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 900 }}>🎰 Degen Arena</h2>
+                <div className="perps-stats" style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
                     <span>Wins: {state.perps?.stats?.wins || 0}</span>
                     <span>Losses: {state.perps?.stats?.losses || 0}</span>
                 </div>
             </div>
 
             {/* Last 100 Reel */}
-            <div className="history-reel">
+            <div className="history-reel" style={{ display: 'flex', gap: 4, overflowX: 'auto', marginBottom: 'var(--space-4)', padding: 4 }}>
                 {historyReel.map((item, i) => (
-                    <div key={i} className={`reel-card ${item.result}`}>
+                    <div key={i} className={`reel-card ${item.result}`} style={{
+                        padding: '4px 8px',
+                        borderRadius: 'var(--radius-sm)',
+                        background: item.result === 'win' ? 'rgba(59, 255, 176, 0.1)' : 'rgba(255, 75, 106, 0.1)',
+                        color: item.result === 'win' ? 'var(--accent-green)' : 'var(--accent-red)',
+                        fontSize: '11px',
+                        whiteSpace: 'nowrap'
+                    }}>
                         {item.result === 'win' ? '🚀' : '🔻'} {item.pnl}%
                     </div>
                 ))}
@@ -163,7 +170,7 @@ export default function PerpsTab() {
 
             <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 {/* Main Chart Area */}
-                <div style={{ flex: 3, position: 'relative' }}>
+                <div className="surface-primary" style={{ flex: 3, position: 'relative', borderRadius: 'var(--radius-lg)', overflow: 'hidden', minHeight: '400px' }}>
                     <PerpsChart
                         onPriceUpdate={handlePriceUpdate}
                         onRug={handleRug}
@@ -172,7 +179,19 @@ export default function PerpsTab() {
 
                     {/* Floating PnL Bubble */}
                     {activePos && (
-                        <div className={`pnl-bubble ${pnlClass}`}>
+                        <div className={`pnl-bubble ${pnlClass}`} style={{
+                            position: 'absolute',
+                            top: 20,
+                            left: 20,
+                            padding: '8px 16px',
+                            background: currentPnL >= 0 ? 'var(--accent-green)' : 'var(--accent-red)',
+                            borderRadius: 'var(--radius-md)',
+                            color: '#000',
+                            fontWeight: 800,
+                            display: 'flex',
+                            gap: 8,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                        }}>
                             <span>🚀 HODL</span>
                             <span>{currentPnL >= 0 ? '+' : ''}${formatMoney(currentPnL)}</span>
                         </div>
@@ -181,15 +200,18 @@ export default function PerpsTab() {
 
                 {/* Fake Leaderboard */}
                 <div style={{ flex: 1, minWidth: '200px' }}>
-                    <div className="leaderboard">
-                        <h3>Live Degens</h3>
+                    <div className="leaderboard surface-secondary" style={{ padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}>
+                        <h3 style={{ marginBottom: 'var(--space-3)', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', textTransform: 'uppercase' }}>Live Degens</h3>
                         {leaderboard.map((p, i) => (
-                            <div key={i} className="player-row">
-                                <div className="player-info">
+                            <div key={i} className="player-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 'var(--text-sm)' }}>
+                                <div className="player-info" style={{ display: 'flex', gap: 8 }}>
                                     <span className="player-icon">{p.icon}</span>
-                                    <span className="player-name">{p.name}</span>
+                                    <span className="player-name" style={{ color: 'var(--text-primary)' }}>{p.name}</span>
                                 </div>
-                                <span className={`player-pnl ${p.pnl >= 0 ? 'green' : 'red'}`}>
+                                <span className={`player-pnl ${p.pnl >= 0 ? 'green' : 'red'}`} style={{
+                                    color: p.pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)',
+                                    fontWeight: 600
+                                }}>
                                     {p.pnl >= 0 ? '+' : ''}{p.pnl.toFixed(0)}%
                                 </span>
                             </div>
@@ -199,7 +221,14 @@ export default function PerpsTab() {
             </div>
 
             {/* Combined Control Panel */}
-            <div className={`bet-bar ${activePos ? pnlClass : ''}`} style={{ flexDirection: 'column', gap: '16px' }}>
+            <div className={`bet-bar ${activePos ? pnlClass : ''}`} style={{
+                marginTop: 'var(--space-4)',
+                padding: 'var(--space-4)',
+                background: 'var(--bg-panel-soft)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--border-subtle)',
+                display: 'flex', flexDirection: 'column', gap: '16px'
+            }}>
 
                 {/* Active Position Stats (Header) */}
                 {activePos && (
@@ -208,24 +237,24 @@ export default function PerpsTab() {
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         paddingBottom: '16px',
-                        borderBottom: '1px solid rgba(255,255,255,0.1)',
+                        borderBottom: '1px solid var(--border-subtle)',
                         width: '100%'
                     }}>
                         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                            <span style={{ fontSize: '1.2rem', fontWeight: '900', color: '#fff' }}>
+                            <span style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--text-primary)' }}>
                                 HELD: ${formatMoney(activePos.amount)}
                             </span>
                             <span style={{
                                 fontSize: '1.2rem',
                                 fontWeight: 'bold',
-                                color: currentPnL >= 0 ? '#00ffa8' : '#ff4d4d'
+                                color: currentPnL >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'
                             }}>
                                 {currentPnL >= 0 ? '+' : ''}${formatMoney(currentPnL)}
                             </span>
                         </div>
-                        <div style={{ display: 'flex', gap: '16px', fontSize: '0.9rem', color: '#888' }}>
-                            <span>Entry: <strong style={{ color: '#fff' }}>${formatMoney(activePos.entryPrice)}</strong></span>
-                            <span>Value: <strong style={{ color: '#fff' }}>${formatMoney(activePos.amount + currentPnL)}</strong></span>
+                        <div style={{ display: 'flex', gap: '16px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                            <span>Entry: <strong style={{ color: 'var(--text-primary)' }}>${formatMoney(activePos.entryPrice)}</strong></span>
+                            <span>Value: <strong style={{ color: 'var(--text-primary)' }}>${formatMoney(activePos.amount + currentPnL)}</strong></span>
                         </div>
                     </div>
                 )}
@@ -233,21 +262,40 @@ export default function PerpsTab() {
                 {/* Betting Inputs Row */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
                     {/* Amount */}
-                    <div className="bet-input-group" style={{ maxWidth: '140px' }}>
-                        <span style={{ color: '#888', fontWeight: 'bold', fontSize: '0.8rem' }}>AMOUNT</span>
+                    <div className="bet-input-group" style={{ maxWidth: '140px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: 'bold', fontSize: '0.8rem' }}>AMOUNT</span>
                         <input
                             type="number"
                             className="bet-input"
                             value={betAmount}
                             onChange={(e) => setBetAmount(Number(e.target.value))}
+                            style={{
+                                background: 'rgba(0,0,0,0.2)',
+                                border: '1px solid var(--border-subtle)',
+                                color: 'var(--text-primary)',
+                                padding: '8px',
+                                borderRadius: 'var(--radius-sm)',
+                                width: '100%'
+                            }}
                         />
                     </div>
 
                     <div style={{ display: 'flex', gap: '4px' }}>
-                        <button className="bet-pill" onClick={() => setBetAmount(b => b + 1)}>+1</button>
-                        <button className="bet-pill" onClick={() => setBetAmount(b => b + 10)}>+10</button>
-                        <button className="bet-pill" onClick={() => setBetAmount(b => b * 2)}>x2</button>
-                        <button className="bet-pill" onClick={() => setBetAmount(state.balance)}>MAX</button>
+                        {[
+                            { label: '+1', val: b => b + 1 },
+                            { label: '+10', val: b => b + 10 },
+                            { label: 'x2', val: b => b * 2 },
+                            { label: 'MAX', val: () => state.balance }
+                        ].map((btn, i) => (
+                            <button key={i} className="bet-pill" onClick={() => setBetAmount(btn.val)} style={{
+                                padding: '8px 12px',
+                                background: 'var(--bg-panel)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: 'var(--radius-sm)',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer'
+                            }}>{btn.label}</button>
+                        ))}
                     </div>
                 </div>
 
@@ -261,7 +309,14 @@ export default function PerpsTab() {
                             flex: activePos ? 1 : 2,
                             fontSize: '1.2rem',
                             textTransform: 'uppercase',
-                            minWidth: '120px'
+                            minWidth: '120px',
+                            background: 'var(--accent-green)',
+                            color: '#000',
+                            border: 'none',
+                            borderRadius: 'var(--radius-md)',
+                            padding: '16px',
+                            fontWeight: 900,
+                            cursor: 'pointer'
                         }}
                     >
                         {activePos ? '🚀 BUY MORE' : '🚀 BUY'}
@@ -280,8 +335,8 @@ export default function PerpsTab() {
                                             padding: '4px',
                                             fontSize: '0.8rem',
                                             fontWeight: 'bold',
-                                            background: sellPercent === pct ? '#ff4d4d' : 'rgba(255,255,255,0.1)',
-                                            color: sellPercent === pct ? '#fff' : '#888',
+                                            background: sellPercent === pct ? 'var(--accent-red)' : 'var(--bg-panel)',
+                                            color: sellPercent === pct ? '#fff' : 'var(--text-secondary)',
                                             border: 'none',
                                             borderRadius: '4px',
                                             cursor: 'pointer'
@@ -294,7 +349,18 @@ export default function PerpsTab() {
                             <button
                                 className="trade-btn short"
                                 onClick={closePosition}
-                                style={{ width: '100%', fontSize: '1.2rem', textTransform: 'uppercase' }}
+                                style={{
+                                    width: '100%',
+                                    fontSize: '1.2rem',
+                                    textTransform: 'uppercase',
+                                    background: 'var(--accent-red)',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: 'var(--radius-md)',
+                                    padding: '12px',
+                                    fontWeight: 900,
+                                    cursor: 'pointer'
+                                }}
                             >
                                 💰 SELL {sellPercent < 100 ? `${sellPercent}%` : ''}
                             </button>

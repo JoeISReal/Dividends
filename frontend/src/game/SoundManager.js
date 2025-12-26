@@ -23,14 +23,13 @@ class SoundManager {
                 this.masterGain.connect(this.ctx.destination);
 
                 this.initialized = true;
-                console.log("AudioContext Created & Resumed");
             } catch (e) {
                 console.error("Web Audio API error", e);
             }
         }
 
         if (this.ctx && this.ctx.state === 'suspended') {
-            this.ctx.resume().then(() => console.log("AudioContext Resumed"));
+            this.ctx.resume();
         }
     }
 
@@ -59,7 +58,7 @@ class SoundManager {
             osc.start();
             osc.stop(this.ctx.currentTime + duration);
 
-            console.log(`🎵 Playing ${type} at ${freq}Hz`);
+
         } catch (e) {
             console.error("Sound Error:", e);
         }

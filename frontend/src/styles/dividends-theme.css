@@ -57,6 +57,7 @@ body {
     padding: 14px 18px;
     height: 100vh;
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 /* Left nav (glossy) */
@@ -174,7 +175,7 @@ body {
     flex-direction: column;
     gap: 14px;
     overflow-y: auto;
-    max-height: 100vh;
+    height: 100%;
 }
 
 /* Top header above chart */
@@ -256,6 +257,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 14px;
+    height: 100%;
+    overflow-y: auto;
 }
 
 .panel {
@@ -428,4 +431,66 @@ body {
     background: linear-gradient(180deg, #1B1B20 0%, #141418 100%);
     transform: translateY(-2px);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+
+/* Wide Mode for Degen Arena */
+.app-shell.wide-mode {
+    grid-template-columns: 260px 1fr;
+}
+
+/* -------------------------
+   X-STYLE SIDEBAR (INFRASTRUCTURE RAIL)
+   Moved here to ensure loading priority
+-------------------------- */
+.nav-rail {
+    width: 240px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-soft);
+    background: var(--bg-root);
+    padding: 12px;
+    box-sizing: border-box;
+}
+
+.nav-item-x {
+    display: flex !important;
+    /* Force row layout */
+    flex-direction: row !important;
+    /* Explicitly force row */
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    background: transparent;
+    margin-bottom: 4px;
+    transition: background 0.1s;
+}
+
+.nav-item-x:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.nav-item-x.active {
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+.nav-item-x .nav-icon {
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+
+.nav-item-x .nav-label {
+    font-size: 18px;
+    line-height: 24px;
+    padding-top: 2px;
+    /* Visual alignment */
 }

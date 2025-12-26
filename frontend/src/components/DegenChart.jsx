@@ -37,6 +37,18 @@ const DegenChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
         // Get singleton engines - they persist across tab switches
         const { trading, chart } = getChartEngines();
 
+        // Read CSS tokens for canvas
+        const style = getComputedStyle(document.body);
+        const tokens = {
+            green: style.getPropertyValue('--accent-green').trim() || '#3bffb0',
+            red: style.getPropertyValue('--accent-red').trim() || '#ff6b81',
+            gold: style.getPropertyValue('--accent-gold').trim() || '#ffd700',
+            text: style.getPropertyValue('--text-secondary').trim() || '#888',
+            border: style.getPropertyValue('--border-subtle').trim() || 'rgba(255,255,255,0.1)',
+            bgPillGreen: 'rgba(59, 255, 176, 0.12)', // approximates var(--accent-green) with opacity
+            bgPillRed: 'rgba(255, 75, 106, 0.12)'
+        };
+
         tradingRef.current = trading;
         chartRef.current = chart;
 
@@ -74,6 +86,26 @@ const DegenChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
             }
 
             const rect = canvas.getBoundingClientRect();
+            // Pass tokens to chart.draw if chart engine supports it, or handle custom drawing here?
+            // The chart engine likely has its own drawing logic.
+            // If chart.draw() is internal, we might not be able to change its colors easily without modifying ChartEngine.
+            // Assuming ChartEngine.draw handles the basics, but the prompt implies WE control the drawing here?
+            // Looking at the original code: `chart.draw(ctx, rect.width, rect.height);`
+            // The drawing logic seems to be inside `chart` object (ChartEngine).
+            // BUT wait, looking at the previous file view of PerpsChart.jsx, it had drawing logic IN THE COMPONENT.
+            // DegenChart.jsx uses `chart.draw`.
+            // Let's check `chartSingleton.js` or wherever `ChartEngine` is.
+            // If `chart.draw` paints the candles, I need to modify THAT.
+            // However, the prompt says "Refactor ... DegenChart.jsx".
+            // If DegenChart delegates drawing to `chart.draw`, I should check if I can configure it.
+            // If I cannot see ChartEngine code, I might have to assume DegenChart is the place or I need to find ChartEngine.
+
+            // Wait, PerpsChart.jsx had all drawing logic inline. DegenChart.jsx delegates to `chart`.
+            // If DegenChart is the active one, and it uses `chart.draw`, then `chart.draw` determines the colors.
+            // I should check `src/game/chartSingleton.js` or `src/game/ChartEngine.js`.
+
+            // For now, let's keep the overlay drawing logic (breakeven line) which IS in this file, and update IT to use tokens.
+
             chart.draw(ctx, rect.width, rect.height);
 
             // Draw breakeven line if position exists
@@ -100,6 +132,10 @@ const DegenChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
                 const currentPnL = pos.currentValue - pos.betAmount;
                 const pnlPercent = ((currentPnL / pos.betAmount) * 100);
 
+                // Note: chart.drawBreakevenLine might also be internal.
+                // But if it takes canvas context, maybe I can override styles before calling?
+                // Or maybe I should check if I can modify ChartEngine.
+
                 chart.drawBreakevenLine(ctx, rect.width, rect.height, minP, maxP, pos.entryPrice, pnlPercent);
 
                 const multiplier = (pos.currentValue / pos.betAmount).toFixed(3);
@@ -109,38 +145,42 @@ const DegenChart = forwardRef(({ onPriceUpdate, activePosition }, ref) => {
                 ctx.save();
 
                 // Background pill
-                const pillPadding = 16;
-                const pillHeight = 70;
                 const pillWidth = 160;
+                const pillHeight = 70;
 
-                ctx.fillStyle = isProfit
-                    ? 'rgba(59,255,176,0.12)'
-                    : 'rgba(255,75,106,0.12)';
-                ctx.strokeStyle = isProfit
-                    ? 'rgba(59,255,176,0.3)'
-                    : 'rgba(255,75,106,0.3)';
+                ctx.fillStyle = isProfit ? tokens.bgPillGreen : tokens.bgPillRed;
+                ctx.strokeStyle = isProfit ? tokens.green : tokens.red; // Use strong token for border so it's visible? Or opacity?
+                // Original was rgba(59,255,176,0.3).
+                // tokens.green is #3bffb0. We can set globalAlpha or use hex logic.
+                // For simplicity, let's use the token color for stroke but lighter alpha if possible.
+                // ctx.globalAlpha = 0.3; ctx.stroke(); ctx.globalAlpha = 1;
+
                 ctx.lineWidth = 1.5;
 
                 ctx.beginPath();
                 ctx.roundRect(12, 12, pillWidth, pillHeight, 12);
                 ctx.fill();
+
+                ctx.save();
+                ctx.globalAlpha = 0.3;
                 ctx.stroke();
+                ctx.restore();
 
                 // Label
-                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.fillStyle = tokens.text;
                 ctx.font = '11px system-ui, -apple-system, sans-serif';
                 ctx.fillText('POSITION P/L', 24, 32);
 
                 // Multiplier
-                ctx.fillStyle = isProfit ? '#3bffb0' : '#ff6b81';
+                ctx.fillStyle = isProfit ? tokens.green : tokens.red;
                 ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
-                ctx.shadowColor = isProfit ? 'rgba(59,255,176,0.4)' : 'rgba(255,75,106,0.4)';
+                ctx.shadowColor = isProfit ? tokens.green : tokens.red;
                 ctx.shadowBlur = 8;
                 ctx.fillText(`${multiplier}x`, 24, 60);
                 ctx.shadowBlur = 0;
 
                 // P/L Amount
-                ctx.fillStyle = isProfit ? '#3bffb0' : '#ff6b81';
+                ctx.fillStyle = isProfit ? tokens.green : tokens.red;
                 ctx.font = '600 13px system-ui, -apple-system, sans-serif';
                 ctx.fillText(
                     `${isProfit ? '+' : ''}$${currentPnL.toFixed(2)} (${Number(pnlPercent).toFixed(2)}%)`,

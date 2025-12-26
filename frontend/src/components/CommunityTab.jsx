@@ -35,7 +35,7 @@ export default function CommunityTab() {
                     href="https://x.com/i/communities/1985125136924639660"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn-primary"
+                    className="btn-action-primary"
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',

@@ -6,10 +6,20 @@ import { TierBadge } from './TierBadge';
 
 export default function LeaderboardTab() {
     const auth = useGameStore(s => s.auth);
+
+    // Game Leaderboard
     const leaderboard = useGameStore(s => s.leaderboard);
     const leaderboardLoading = useGameStore(s => s.leaderboardLoading);
     const fetchLeaderboard = useGameStore(s => s.fetchLeaderboard);
     const syncScore = useGameStore(s => s.syncScore);
+
+    // Token Holders (Bags)
+    const tokenLeaderboard = useGameStore(s => s.tokenLeaderboard);
+    const tokenLeaderboardLoading = useGameStore(s => s.tokenLeaderboardLoading);
+    const fetchTokenLeaderboard = useGameStore(s => s.fetchTokenLeaderboard);
+
+    // View State: 'game' | 'tokens'
+    const [viewMode, setViewMode] = useState('game');
 
     // Initial load
     useEffect(() => {
@@ -17,42 +27,45 @@ export default function LeaderboardTab() {
         if (auth.isAuthenticated) {
             syncScore();
         }
+        // Lazy load token holders
+        fetchTokenLeaderboard();
     }, []);
 
+    const isLoading = viewMode === 'game' ? leaderboardLoading : tokenLeaderboardLoading;
+    const listData = viewMode === 'game' ? leaderboard : tokenLeaderboard;
 
+    const handleRefresh = () => {
+        soundManager.playClick();
+        if (viewMode === 'game') {
+            syncScore();
+            fetchLeaderboard();
+        } else {
+            fetchTokenLeaderboard();
+        }
+    };
 
     return (
-        <div style={{ padding: 20, height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div className="main-header">
-                <div className="main-title">🏆 Leaderboard</div>
+        <div style={{ padding: '0 var(--space-4) var(--space-4)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div className="main-header" style={{ marginBottom: 'var(--space-4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="main-title" style={{ fontSize: 'var(--text-2xl)', fontWeight: 800 }}>🏆 Leaderboard</div>
                 <div style={{ display: 'flex', gap: 6 }}>
                     <button
-                        className="btn-secondary"
-                        onClick={() => {
-                            soundManager.playClick();
-                            syncScore();
-                            fetchLeaderboard();
-                        }}
+                        className="btn-action-meta"
+                        onClick={handleRefresh}
                         title="Refresh Leaderboard"
                         style={{
                             fontSize: 12,
                             background: 'transparent',
-                            border: '1px solid rgba(171, 159, 242, 0.4)',
-                            color: '#AB9FF2',
+                            border: '1px solid var(--border-subtle)',
+                            color: 'var(--text-secondary)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             padding: '4px 10px',
                             gap: 6,
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(171, 159, 242, 0.1)';
-                            e.currentTarget.style.borderColor = '#AB9FF2';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
-                            e.currentTarget.style.borderColor = 'rgba(171, 159, 242, 0.4)';
+                            transition: 'all 0.2s',
+                            cursor: 'pointer',
+                            borderRadius: 'var(--radius-sm)'
                         }}
                     >
                         <span>🔄</span>
@@ -60,110 +73,238 @@ export default function LeaderboardTab() {
                 </div>
             </div>
 
-            <div style={{ marginBottom: 20, background: 'rgba(171, 159, 242, 0.1)', border: '1px solid rgba(171, 159, 242, 0.3)', padding: '12px 20px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#AB9FF2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
-                        👻
-                    </div>
-                    <div>
-                        <div style={{ fontSize: 10, color: '#AB9FF2', fontWeight: 600 }}>CONNECTED</div>
-                        <span style={{ fontWeight: 600, fontSize: 14 }}>
-                            {auth.user?.displayName || (auth.user?.handle ? `${auth.user.handle.slice(0, 4)}...${auth.user.handle.slice(-4)}` : '')}
-                        </span>
-                        <span style={{
-                            marginLeft: 8,
-                            fontSize: 10,
-                            background: 'var(--gold)',
-                            color: '#000',
-                            padding: '2px 6px',
-                            borderRadius: 4,
-                            fontWeight: 700
-                        }}>
-                            LVL {useGameStore.getState().level}
-                        </span>
-                        {auth.user?.holderTier && auth.user.holderTier !== 'NONE' && (
-                            <TierBadge tier={auth.user.holderTier} size="sm" />
-                        )}
-                    </div>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    Rank: <span style={{ color: '#fff', fontWeight: 700 }}>#{getUserRank(leaderboard, auth.user?.handle)}</span>
-                </div>
+            {/* Toggle Switch */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: 'rgba(255,255,255,0.05)', padding: 4, borderRadius: 12 }}>
+                <button
+                    onClick={() => { setViewMode('game'); soundManager.playClick(); }}
+                    style={{
+                        flex: 1,
+                        background: viewMode === 'game' ? 'var(--accent-gold)' : 'transparent',
+                        color: viewMode === 'game' ? '#000' : 'var(--text-secondary)',
+                        border: 'none',
+                        padding: '8px',
+                        borderRadius: 8,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    PLAYERS
+                </button>
+                <button
+                    onClick={() => { setViewMode('tokens'); soundManager.playClick(); }}
+                    style={{
+                        flex: 1,
+                        background: viewMode === 'tokens' ? 'var(--accent-green)' : 'transparent',
+                        color: viewMode === 'tokens' ? '#000' : 'var(--text-secondary)',
+                        border: 'none',
+                        padding: '8px',
+                        borderRadius: 8,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    TOP HOLDERS
+                </button>
             </div>
 
-            {leaderboardLoading ? (
-                <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>Loading ranks...</div>
-            ) : (
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ color: 'var(--text-secondary)', fontSize: 12, textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                <th style={{ padding: 10 }}>#</th>
-                                <th style={{ padding: 10 }}>Player</th>
-                                <th style={{ padding: 10, textAlign: 'right' }}>Lifetime Yield</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {leaderboard
-                                .filter(u => {
-                                    const h = u.handle || '';
-                                    // Filter out the "naSo...Solx" or similar specific unwanted entries
-                                    if (h.startsWith('naSo') || h.startsWith('NaSo') || h.includes('Solx')) return false;
-
-                                    // Blacklist
-                                    const d = u.displayName || '';
-                                    if (d.toLowerCase().includes('fsvn') || h.toLowerCase().includes('fsvn')) return false;
-
-                                    return true;
-                                })
-                                .map((u, i) => (
-                                    <tr key={i} style={{
-                                        borderBottom: '1px solid rgba(255,255,255,0.05)',
-                                        background: u.handle === auth.user?.handle ? 'rgba(171, 159, 242, 0.1)' : 'transparent'
-                                    }}>
-                                        <td style={{ padding: 12, width: 40 }}>
-                                            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
-                                        </td>
-                                        <td style={{ padding: 12 }}>
-                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    <span style={{ fontWeight: 600, fontSize: 13, color: u.displayName ? '#fff' : 'var(--text-secondary)' }}>
-                                                        {u.displayName || `${u.handle?.slice(0, 4)}...${u.handle?.slice(-4)}`}
-                                                    </span>
-                                                    {u.holderTier && u.holderTier !== 'NONE' && (
-                                                        <TierBadge tier={u.holderTier} size="xs" />
-                                                    )}
-                                                </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-muted)' }}>
-                                                    {u.displayName && <span style={{ fontFamily: 'monospace' }}>{u.handle?.slice(0, 4)}</span>}
-                                                    <span style={{
-                                                        background: 'rgba(255,255,255,0.1)',
-                                                        padding: '1px 4px',
-                                                        borderRadius: 3,
-                                                        color: '#AB9FF2'
-                                                    }}>
-                                                        Lvl {u.level || 1}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: 12, textAlign: 'right', color: 'var(--accent-green)', fontFamily: 'monospace' }}>
-                                            ${u.lifetimeYield?.toLocaleString()}
-                                        </td>
-                                    </tr>
-                                ))}
-                        </tbody>
-                    </table>
+            {/* Game Stats Header (Only for Game Mode) */}
+            {viewMode === 'game' && (
+                <div className="surface-primary" style={{ marginBottom: 20, padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 0 10px rgba(245, 199, 122, 0.4)', color: 'var(--bg-root)' }}>
+                            👻
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--accent-gold)', fontWeight: 700, letterSpacing: '0.1em' }}>YOU</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontWeight: 700, fontSize: 16 }}>
+                                    {auth.user?.displayName || (auth.user?.handle ? `${auth.user.handle.slice(0, 4)}...${auth.user.handle.slice(-4)}` : 'Guest')}
+                                </span>
+                                <div style={{
+                                    width: 8, height: 8,
+                                    background: 'var(--accent-green)',
+                                    borderRadius: '50%',
+                                    boxShadow: '0 0 5px var(--accent-green)'
+                                }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                <span style={{ fontSize: 10, background: 'var(--accent-gold)', color: 'var(--bg-root)', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                                    LVL {useGameStore.getState().level}
+                                </span>
+                                {auth.user?.holderTier && auth.user.holderTier !== 'NONE' && (
+                                    <TierBadge tierOverride={null} balance={auth.user.holderBalanceApprox || 0} size="sm" showName={false} />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>Current Rank</div>
+                        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>#{getUserRank(leaderboard, auth.user?.handle)}</div>
+                    </div>
                 </div>
-            )
-            }
+            )}
+
+            {/* Token Holders Header (Summary) */}
+            {viewMode === 'tokens' && (
+                <div style={{ marginBottom: 20, textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)' }}>
+                    Displaying Top 100 on-chain holders of <strong>$DIVIDENDS</strong>
+                </div>
+            )}
+
+            {isLoading ? (
+                <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
+                    Loading {viewMode === 'game' ? 'players' : 'top holders'}...
+                </div>
+            ) : (
+                <div className="leaderboard-list" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {viewMode === 'game' ? (
+                        // GAME LEADERBOARD RENDER
+                        listData
+                            .filter(u => {
+                                const h = u.handle || '';
+                                if (h.startsWith('naSo') || h.startsWith('NaSo') || h.includes('Solx')) return false;
+                                const d = u.displayName || '';
+                                if (d.toLowerCase().includes('fsvn') || h.toLowerCase().includes('fsvn')) return false;
+                                return true;
+                            })
+                            .map((u, i) => {
+                                const isMe = u.handle === auth.user?.handle;
+                                const isTop3 = i < 3;
+
+                                // Top 3 Visuals
+                                let bg = 'transparent';
+                                if (isMe) bg = 'rgba(245, 199, 122, 0.08)'; // Subtle gold tint
+                                else if (isTop3) bg = 'var(--bg-panel-soft)';
+                                else if (i % 2 === 1) bg = 'rgba(255,255,255,0.01)'; // Zebra striping
+
+                                let border = isMe ? '1px solid var(--accent-gold)' : (isTop3 ? '1px solid var(--border-subtle)' : '1px solid transparent');
+
+                                return (
+                                    <div key={i} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        padding: isTop3 ? '16px 24px' : '8px 16px',
+                                        background: bg,
+                                        border: border,
+                                        borderRadius: 12,
+                                        cursor: 'default',
+                                    }}>
+                                        <div style={{ width: 40, textAlign: 'center', fontSize: isTop3 ? 20 : 14, fontWeight: 700, color: i < 3 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                                            {i === 0 ? '👑' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                                        </div>
+                                        <div style={{
+                                            width: isTop3 ? 42 : 32,
+                                            height: isTop3 ? 42 : 32,
+                                            borderRadius: '50%',
+                                            background: isTop3 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 12, fontSize: isTop3 ? 20 : 14
+                                        }}>
+                                            {u.holderTier === 'inner_circle' ? '👑' : '👤'}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <span style={{ fontWeight: 600, fontSize: isTop3 ? 16 : 14, color: isMe ? 'var(--accent-gold)' : 'var(--text-primary)' }}>
+                                                    {u.displayName || `${u.handle?.slice(0, 4)}...${u.handle?.slice(-4)}`}
+                                                </span>
+                                                <TierBadge balance={u.holderBalanceApprox || 0} size="xs" showName={false} />
+                                            </div>
+                                            {isTop3 && (
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', marginTop: 2 }}>
+                                                    LVL {u.level || 1} • {u.handle?.slice(0, 4)}...{u.handle?.slice(-4)}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ color: 'var(--accent-green)', fontWeight: 600, fontFamily: 'monospace', fontSize: isTop3 ? 16 : 14 }}>
+                                                ${u.lifetimeYield?.toLocaleString()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                    ) : (
+                        // TOKEN HOLDERS RENDER
+                        (listData || []).map((h, i) => {
+                            const isMe = h.wallet === auth.user?.handle;
+
+                            // Dark Card Style
+                            const bg = isMe ? 'rgba(59, 255, 176, 0.08)' : 'rgba(0,0,0,0.4)';
+                            const border = isMe ? '1px solid var(--accent-green)' : '1px solid rgba(255,255,255,0.05)';
+
+                            return (
+                                <div key={i} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '12px 16px',
+                                    background: bg,
+                                    border: border,
+                                    borderRadius: 12, // Card-like
+                                    marginBottom: 8,
+                                    transition: 'all 0.2s',
+                                }}>
+                                    {/* Rank */}
+                                    <div style={{ width: 30, textAlign: 'left', fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                                        {i + 1}
+                                    </div>
+
+                                    {/* Identity */}
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <TierBadge tier={h.tier} balance={h.balanceApprox} size="sm" showName={false} />
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 600, color: isMe ? 'var(--accent-green)' : (h.username ? 'var(--accent-gold)' : 'var(--text-primary)') }}>
+                                                {h.username || `${h.wallet.slice(0, 4)}...${h.wallet.slice(-4)}`}
+                                            </span>
+                                            {h.username && (
+                                                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                                                    {h.wallet.slice(0, 4)}...{h.wallet.slice(-4)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Right Side: % and Balance */}
+                                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                        <div style={{ color: 'var(--text-primary)', fontWeight: 700, fontFamily: 'monospace', fontSize: 14 }}>
+                                            {h.share ? `${h.share.toFixed(2)}%` : '< 0.01%'}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                            {formatShorthand(h.balanceApprox)}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+
+                    {/* Game Recruiting Slots (Only for Game View) */}
+                    {viewMode === 'game' && Array.from({ length: Math.max(0, 10 - listData.length) }).map((_, idx) => (
+                        <div key={`recruiting-${idx}`} style={{
+                            display: 'flex', alignItems: 'center', padding: '8px 16px',
+                            border: '1px dashed var(--border-muted)', borderRadius: 12, opacity: 0.5
+                        }}>
+                            <div style={{ width: 40, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>-</div>
+                            <div style={{ flex: 1, fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>Recruiting...</div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div >
     );
 }
 
 function getUserRank(list, handle) {
     if (!handle) return '-';
-    // Handle specific string comparison (exact match)
     const idx = list.findIndex(u => u.handle === handle);
     return idx === -1 ? '-' : idx + 1;
+}
+
+function formatShorthand(num) {
+    if (!num) return '0';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+    return num.toLocaleString();
 }

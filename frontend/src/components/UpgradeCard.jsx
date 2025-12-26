@@ -1,4 +1,5 @@
 import React from "react";
+import './UpgradeCard.css';
 
 export default function UpgradeCard({ upgrade, onBuy, ownedLevel }) {
     const currentCost = Math.floor(upgrade.cost * Math.pow(upgrade.costScale || 1.5, ownedLevel || 0));
@@ -12,32 +13,25 @@ export default function UpgradeCard({ upgrade, onBuy, ownedLevel }) {
     };
 
     return (
-        <div className="upgrade-card">
-            <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
-                <div className="stream-icon">{getIcon()}</div>
-                <div style={{ flex: 1 }}>
-                    <div className="stream-title">{upgrade.name}</div>
-                    <div style={{ fontSize: 13, color: "#A5A9BC", marginTop: 4 }}>
+        <div className="upgrade-card surface-secondary">
+            <div className="upgrade-header">
+                <div className="upgrade-icon">{getIcon()}</div>
+                <div className="upgrade-info">
+                    <div className="upgrade-name">{upgrade.name}</div>
+                    <div className="upgrade-desc">
                         {upgrade.desc}
                     </div>
                 </div>
                 {ownedLevel > 0 && (
-                    <div style={{
-                        fontSize: 20,
-                        fontWeight: 700,
-                        color: "#3BFFB0",
-                        padding: "4px 10px",
-                        background: "rgba(59, 255, 176, 0.1)",
-                        borderRadius: 8,
-                        border: "1px solid rgba(59, 255, 176, 0.25)"
-                    }}>
+                    <div className="upgrade-level">
                         {ownedLevel}
                     </div>
                 )}
             </div>
 
             <button
-                className="btn-buy"
+                className="btn-action-primary"
+                style={{ width: '100%' }}
                 onClick={() => onBuy(upgrade.key)}
             >
                 BUY • ${currentCost.toLocaleString()}

@@ -18,17 +18,11 @@ export default function ManagersTab({ managers, ownedManagers, balance, onBuy })
                                 <div>
                                     <div className="manager-name">{mgr.name}</div>
                                     {mgr.description && (
-                                        <div style={{
-                                            fontSize: 11,
-                                            color: 'rgba(255,255,255,0.5)',
-                                            marginTop: 2,
-                                            marginBottom: 4,
-                                            lineHeight: 1.3
-                                        }}>
+                                        <div className="manager-desc">
                                             {mgr.description}
                                         </div>
                                     )}
-                                    <div className="manager-stream">Automates: {mgr.automatesStream}</div>
+                                    <div className="manager-stream">Automates: {mgr.streamName}</div>
                                 </div>
                             </div>
 
@@ -36,9 +30,10 @@ export default function ManagersTab({ managers, ownedManagers, balance, onBuy })
                                 <div className="manager-owned">✓ HIRED</div>
                             ) : (
                                 <button
-                                    className={`manager-buy ${canAfford ? '' : 'disabled'}`}
+                                    className={`btn-action-economic ${canAfford ? '' : 'disabled'}`}
                                     onClick={() => onBuy(mgr.id)}
                                     disabled={!canAfford}
+                                    style={{ width: '100%', padding: '8px', fontSize: 13 }}
                                 >
                                     Hire ${mgr.cost.toLocaleString()}
                                 </button>

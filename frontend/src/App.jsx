@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from './state/gameStore';
 import useGameLoop from './game/useGameLoop';
+import { STREAMS } from './data/GameData';
 import { getStreamDescription, getUpgradeDescription } from './data/descriptions';
 
 import { AppShell } from './AppShell';
 import StreamCard from './components/StreamCard';
-import UpgradeCard from './components/UpgradeCard';
-import ManagersTab from './components/ManagersTab';
+import OperationsTab from './components/OperationsTab';
+import StreamsTab from './components/StreamsTab';
 import HelpTab from './components/HelpTab';
 import CommunityTab from './components/CommunityTab';
 import SettingsTab from './components/SettingsTab';
@@ -15,9 +16,9 @@ import NotificationToast from './components/NotificationToast';
 import LoginPage from './pages/LoginPage';
 import DegenArenaPage from './pages/DegenArenaPage';
 import TradeHistoryPage from './pages/TradeHistoryPage';
-
+import DashboardTab from './components/DashboardTab';
+import PrestigeTab from './components/PrestigeTab';
 import { soundManager } from './game/SoundManager';
-import DebugOverlay from './components/DebugOverlay';
 
 export default function App() {
   const auth = useGameStore(s => s.auth);
@@ -46,7 +47,7 @@ export default function App() {
   const buyUpgrade = useGameStore((s) => s.buyUpgrade);
   const addBalance = useGameStore((s) => s.addBalance);
 
-  const [activeTab, setActiveTab] = useState('streams');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [buyAmount, setBuyAmount] = useState(1);
 
   // Core Game Loop
@@ -103,63 +104,33 @@ export default function App() {
   let centerContent;
   let liveDegens = [];
 
-  if (activeTab === 'streams') {
+  // Create a sorted list for display (Cheapest -> Most Expensive)
+  const SORTED_STREAMS = [...STREAMS].sort((a, b) => a.baseCost - b.baseCost);
+
+  if (activeTab === 'dashboard') {
+    centerContent = <DashboardTab />;
+
+  } else if (activeTab === 'streams') {
     centerContent = (
-      <>
-        <div className="main-header">
-          <div className="main-title">Streams</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[1, 10, 25, 100, 'MAX'].map(amt => (
-              <button
-                key={amt}
-                className={buyAmount === amt ? "pill pill--gold" : "pill"}
-                onClick={() => setBuyAmount(amt)}
-                style={{
-                  cursor: "pointer",
-                  padding: "8px 14px",
-                  fontWeight: 600,
-                  background: buyAmount === amt ? 'var(--gold)' : 'rgba(255,255,255,0.08)',
-                  color: buyAmount === amt ? '#000' : '#fff',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px'
-                }}
-              >
-                {amt}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
-          {Object.entries(streams).map(([key, stream]) => {
-            const desc = getStreamDescription(key);
-            return (
-              <StreamCard
-                key={key}
-                stream={{
-                  id: key,
-                  name: desc.name,
-                  description: desc.description,
-                  icon: getStreamIcon(key),
-                  owned: stream.level,
-                  baseCost: stream.baseCost,
-                  baseYield: stream.baseYps,
-                  baseTime: 3,
-                  costScale: 1.15,
-                  hasManager: managers[key],
-                  unlocks: [],
-                }}
-                onBuy={() => handleBuyStream(key)}
-                buyAmount={buyAmount}
-                onCollect={() => handleCollectStream(key)}
-              />
-            );
-          })}
-        </div>
-      </>
+      <StreamsTab
+        streams={streams}
+        managers={managers}
+        buyAmount={buyAmount}
+        setBuyAmount={setBuyAmount}
+        onBuyStream={handleBuyStream}
+        onCollectStream={handleCollectStream}
+        getStreamIcon={getStreamIcon}
+      />
     );
-  } else if (activeTab === 'managers') {
-    const managersArray = Object.entries(managers).map(([key, isHired]) => {
+
+  } else if (activeTab === 'operations') {
+    // Operations Tab (Managers + Upgrades)
+
+    // Prop: Managers List
+    const managersArray = SORTED_STREAMS.map((s) => {
+      const key = s.id;
       const desc = getStreamDescription(key);
+      const isHired = managers[key];
       return {
         id: key,
         name: desc.managerName,
@@ -167,54 +138,22 @@ export default function App() {
         cost: managerCosts[key],
         hired: isHired,
         automatesStream: key,
+        streamName: desc.name,
       };
     });
+
     centerContent = (
-      <ManagersTab
+      <OperationsTab
         managers={managersArray}
         ownedManagers={Object.entries(managers).filter(([_, hired]) => hired).map(([key]) => key)}
         balance={balance}
-        onBuy={handleHireManager}
+        onHireManager={handleHireManager}
+        upgrades={upgrades}
+        multipliers={multipliers}
+        onBuyUpgrade={handleBuyUpgrade}
       />
     );
-  } else if (activeTab === 'upgrades') {
-    const clickDesc = getUpgradeDescription('click');
-    const globalDesc = getUpgradeDescription('global');
-    const upgradesCatalog = [
-      {
-        key: 'click',
-        name: clickDesc.name,
-        desc: clickDesc.description,
-        cost: Math.floor(500 * Math.pow(2, upgrades.clickLevel)),
-        level: upgrades.clickLevel,
-        effect: `x${multipliers.click}`,
-      },
-      {
-        key: 'global',
-        name: globalDesc.name,
-        desc: globalDesc.description,
-        cost: Math.floor(50000 * Math.pow(1.5, upgrades.globalLevel)),
-        level: upgrades.globalLevel,
-        effect: `x${multipliers.global.toFixed(2)}`,
-      },
-    ];
-    centerContent = (
-      <>
-        <div className="main-header">
-          <div className="main-title">Upgrades</div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
-          {upgradesCatalog.map(u => (
-            <UpgradeCard
-              key={u.key}
-              upgrade={u}
-              onBuy={() => handleBuyUpgrade(u.key)}
-              ownedLevel={u.level}
-            />
-          ))}
-        </div>
-      </>
-    );
+
   } else if (activeTab === 'degen-arena') {
     centerContent = <DegenArenaPage />;
   } else if (activeTab === 'leaderboard') {
@@ -223,8 +162,12 @@ export default function App() {
     centerContent = <CommunityTab />;
   } else if (activeTab === 'settings') {
     centerContent = <SettingsTab />;
-  } else {
+  } else if (activeTab === 'help') {
     centerContent = <HelpTab />;
+  } else if (activeTab === 'prestige') {
+    centerContent = <PrestigeTab />;
+  } else {
+    centerContent = <DashboardTab />; // Default fallback
   }
 
   return (
@@ -236,19 +179,24 @@ export default function App() {
         liveDegens={liveDegens}
       />
       <NotificationToast />
-      <DebugOverlay />
     </>
   );
 }
 
 function getStreamIcon(streamKey) {
   const icons = {
-    shitpost: '💩',
-    engagement: '📿',
-    pump: '🚀',
-    nft: '🖼️',
-    algo: '🤖',
-    sentiment: '🔮',
+    microbags: '🧹',
+    liquidity_pool: '💧',
+    dao_treasury: '🏛️',
+    leverage_frog: '🐸',
+    meme_farm: '😂',
+    arb_node: '⚡',
+    chart_whisperer: '📐',
+    trading_bot: '🤖',
+    validator: '🛡️',
+    whale_tracker: '🐋',
+    cex_pipeline: '🏦',
+    central_bank: '🖨️',
   };
   return icons[streamKey] || '💰';
 }

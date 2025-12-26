@@ -1,4 +1,7 @@
 import dotenv from 'dotenv';
+// Load from api/.env if running from root
+dotenv.config({ path: 'api/.env' });
+// Load from .env (standard behavior, fallback or inside api dir)
 dotenv.config();
 
 import express from 'express';
@@ -14,6 +17,7 @@ import { EventSystem } from './_src/modules/Events.js';
 import { signSession } from './_src/services/authCookies.js';
 import { requireAuth } from './_src/middleware/requireAuth.js';
 import * as bagsService from './_src/services/bagsService.js';
+import * as solanaService from './_src/services/solanaService.js';
 
 const app = express();
 app.set('trust proxy', 1); // Render/Vercel behind proxy
@@ -23,6 +27,12 @@ if (!process.env.COOKIE_SECRET) {
     console.error("CRITICAL: COOKIE_SECRET not set. Server refusing to start.");
     process.exit(1);
 }
+
+console.log("----------------------------------------");
+console.log("SERVER STARTUP ENV CHECK:");
+console.log(`JUPITER_API_KEY Present: ${!!process.env.JUPITER_API_KEY}`);
+console.log(`DIVIDENDS_MINT: ${process.env.DIVIDENDS_MINT}`);
+console.log("----------------------------------------");
 
 app.use(cookieParser());
 
@@ -209,6 +219,9 @@ app.post("/api/auth/verify", async (req, res) => {
                 upgrades: [],
                 prestige: { multiplier: 1, resets: 0 },
                 level: 1,
+                xp: 0,
+                fatigue: 0,
+                streamAges: {},
                 lastActive: Date.now(),
                 createdAt: Date.now()
             };
@@ -278,7 +291,10 @@ app.post('/api/sync', requireAuth, async (req, res) => {
                 $max: {
                     balance: balance || 0,
                     lifetimeYield: lifetimeYield || 0,
-                    level: level || 1
+                    level: level || 1,
+                    xp: req.body.xp || 0,
+                    fatigue: req.body.fatigue || 0,
+                    streamAges: req.body.streamAges || {}
                 }
             }
         );
@@ -625,6 +641,52 @@ app.get('/api/events/random', (req, res) => {
     res.json({ event });
 });
 
+import * as jupiterService from './_src/services/jupiterService.js';
+
+// --- SOLANA RENT RECLAIM ROUTES ---
+
+// SCAN RENT (Authenticated)
+app.get('/api/solana/scan-rent', requireAuth, async (req, res) => {
+    const handle = req.session.wallet;
+    try {
+        const data = await solanaService.getReclaimableAccounts(handle);
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// CREATE RECLAIM TX (Authenticated)
+app.post('/api/solana/create-reclaim-tx', requireAuth, async (req, res) => {
+    const handle = req.session.wallet;
+    const { accounts } = req.body;
+
+    if (!accounts || !Array.isArray(accounts)) {
+        return res.status(400).json({ error: "Invalid accounts list" });
+    }
+
+    try {
+        const result = await solanaService.createReclaimTransaction(handle, accounts);
+        res.json(result);
+    } catch (e) {
+        console.error("Tx Creation Error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- MARKET DATA ROUTES (Jupiter) ---
+app.get('/api/market/trending', async (req, res) => {
+    // No auth required - Public Data
+    const data = await jupiterService.fetchTrendingTokens();
+    res.json(data);
+});
+
+app.get('/api/market/prices', async (req, res) => {
+    // No auth required
+    const data = await jupiterService.fetchTokenPrices();
+    res.json(data);
+});
+
 // --- BAGS API ROUTES (Public) ---
 const DIVIDENDS_MINT = process.env.DIVIDENDS_MINT || "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
 
@@ -664,6 +726,16 @@ app.get('/api/bags/token/top-holders', async (req, res) => {
     } catch (e) {
         console.error("Bags API Holders Error:", e);
         res.status(500).json({ error: "Failed to fetch top holders" });
+    }
+});
+
+app.get('/api/bags/trending', async (req, res) => {
+    try {
+        const trending = await bagsService.getTrendingTokens();
+        res.json(trending);
+    } catch (e) {
+        console.error("Bags Trending Error:", e);
+        res.status(500).json({ error: "Failed to fetch trending" });
     }
 });
 
@@ -722,7 +794,7 @@ app.delete('/api/admin/user/:handle', async (req, res) => {
 // GET /api/bags/leaderboard (Public)
 app.get('/api/bags/leaderboard', async (req, res) => {
     try {
-        const lb = bagsService.getLeaderboard();
+        const lb = await bagsService.getLeaderboard();
         res.json(lb);
     } catch (e) {
         console.error("Bags Leaderboard Error:", e);

@@ -1,15 +1,21 @@
 import React from "react";
 import { useGameStore } from "./state/gameStore";
 import { soundManager } from "./game/SoundManager";
-import ConfirmationModal from "./components/ConfirmationModal";
+
 import { TierBadge } from "./components/TierBadge";
+import ArenaIntro from "./components/ArenaIntro";
 import "./styles/dividends-theme.css";
 import { MOOD_CONFIG } from './cosmetics/registry';
+import { TrendingPanel } from './components/TrendingPanel';
+import { SystemFeed } from './components/SystemFeed';
+import { BagsWidget } from './components/BagsWidget';
+import { EcosystemMoodPanel } from './components/EcosystemMoodPanel';
 
 export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) {
     // Zustand store hooks
     const balance = useGameStore((s) => s.balance);
     const yps = useGameStore((s) => s.yps);
+    const level = useGameStore((s) => s.level); // Added Level
     const lifetimeYield = useGameStore((s) => s.lifetimeYield);
     const totalClicks = useGameStore((s) => s.totalClicks);
     const yieldPerClick = useGameStore((s) => s.yieldPerClick);
@@ -31,67 +37,44 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
 
     const effectiveClickYield = yieldPerClick * clickMultiplier;
 
-    // Generic Modal State
-    const [modalConfig, setModalConfig] = React.useState({
-        isOpen: false,
-        title: '',
-        message: '',
-        onConfirm: () => { }
-    });
-
-    const handlePrestigeClick = () => {
-        soundManager.playClick();
-        setModalConfig({
-            isOpen: true,
-            title: 'Prestige Reset',
-            message: 'Are you sure you want to prestige? This will reset all streams and upgrades in exchange for a permanent multiplier bonus based on your current YPS.',
-            onConfirm: () => {
-                const bonus = doPrestige();
-                soundManager.playSuccess();
-                useGameStore.getState().showNotification(`Prestige Successful! +${bonus}x Multiplier`, 'success');
-                setModalConfig(prev => ({ ...prev, isOpen: false }));
-            }
-        });
-    };
+    const isWideMode = activeTab === 'degen-arena';
 
     return (
-        <div className="app-shell bg-abstract-hero bg-overlay">
-            {/* LEFT NAV */}
-            <aside className="app-nav">
-                <div className="app-logo">
-                    <div className="app-logo-icon">
-                        <img src="/logo.png" alt="Dividends" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
-                    </div>
-                    <div>
-                        <div className="app-logo-text">DIVIDENDS</div>
-                        <div className="app-logo-sub">DEGEN WEALTH</div>
+        <div className={`app-shell bg-abstract-hero bg-overlay ${isWideMode ? 'wide-mode' : ''}`} style={{ position: 'relative', overflow: 'hidden' }}>
+            {/* Ambient & HUD Layers */}
+            <div className="ambient-grid animate-ambient-drift" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }} />
+            <div className="hud-overlay" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}>
+                <div className="hud-top-left" style={{ opacity: 0.5 }}>
+                    <div>SYSTEM: ONLINE</div>
+                    <div>NET: SOLANA_MAIN</div>
+                </div>
+                <div className="hud-btm-right" style={{ opacity: 0.5 }}>
+                    <div>SECURE LINK</div>
+                    <div>V 0.9.1</div>
+                </div>
+            </div>
+
+            {/* Arena Intro Overlay (Scoped to Tab) */}
+            {isWideMode && <ArenaIntro />}
+
+            {/* LEFT NAV (X-STYLE RAIL) */}
+            <aside className="nav-rail" style={{ position: 'relative', zIndex: 10, paddingBottom: '120px' }}>
+                {/* 1. APP LOGO (Minimal) */}
+                <div style={{ padding: '0 12px', marginBottom: 24, display: 'flex', alignItems: 'center' }}>
+                    <div style={{
+                        width: 32, height: 32, borderRadius: '50%', overflow: 'hidden',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <img src="/logo.png" alt="Divs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                 </div>
 
-                <div className="nav-card">
-                    <div className="nav-item" style={{ cursor: "default" }}>
-                        <div className="nav-item-icon">💰</div>
-                        <div>
-                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Balance</div>
-                            <div style={{ fontWeight: 600 }}>${balance.toFixed(2)}</div>
-                        </div>
-                    </div>
-                    <div className="nav-item" style={{ cursor: "default", marginTop: 8 }}>
-                        <div className="nav-item-icon">📈</div>
-                        <div>
-                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>YPS</div>
-                            <div style={{ fontWeight: 600, color: "var(--accent-green)" }}>
-                                ${yps.toFixed(2)}/s
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="nav-card">
+                {/* 2. NAVIGATION LINKS */}
+                <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {[
+                        { id: "dashboard", label: "Dashboard", icon: "🏠" },
                         { id: "streams", label: "Streams", icon: "📊" },
-                        { id: "managers", label: "Managers", icon: "👔" },
-                        { id: "upgrades", label: "Upgrades", icon: "⚡" },
+                        { id: "operations", label: "Operations", icon: "⚡" },
                         { id: "degen-arena", label: "Degen Arena", icon: "🎰" },
                         { id: "leaderboard", label: "Leaderboard", icon: "🏆" },
                         { id: "community", label: "Community", icon: "🐦" },
@@ -100,165 +83,146 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
                     ].map(item => (
                         <div
                             key={item.id}
-                            className={
-                                "nav-item" + (activeTab === item.id ? " nav-item--active" : "")
-                            }
+                            className={`nav-item-x ${activeTab === item.id ? 'active' : ''}`}
                             onClick={() => {
                                 onTabChange(item.id);
                                 soundManager.playClick();
                             }}
                         >
-                            <div className="nav-item-icon">{item.icon}</div>
-                            <span>{item.label}</span>
+                            <div className="nav-icon">{item.icon}</div>
+                            <span className="nav-label">{item.label}</span>
                         </div>
                     ))}
+
+                    {/* PRIMARY ACTION (FARM) */}
+                    <div style={{ padding: '16px 0', marginTop: 12 }}>
+                        <button
+                            onClick={handleMine}
+                            className="btn-action-primary"
+                            style={{
+                                width: '90%',
+                                borderRadius: 999,
+                                height: 52,
+                                fontSize: 17,
+                                fontWeight: 800,
+                                boxShadow: 'none', // Flat style constraint
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                margin: '0 auto',
+                                background: 'var(--text-primary)', // White/Bright for X style "Post" button
+                                color: '#000'
+                            }}
+                        >
+                            FARM
+                        </button>
+                    </div>
+                </nav>
+
+                {/* 3. MINI PROFILE (Bottom Anchor) */}
+                <div style={{
+                    marginTop: 'auto',
+                    padding: 12,
+                    borderRadius: 999,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    cursor: 'pointer',
+                    transition: 'background 0.2s',
+                    position: 'relative'
+                }}
+                    className="nav-item-x" /* Reuse hover styles */
+                    onClick={() => {
+                        soundManager.playClick();
+                        onTabChange('prestige');
+                    }}
+                >
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#333', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        {/* Placeholder Avatar or Initials */}
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-green)', color: '#000', fontWeight: 700 }}>
+                            {user?.handle ? user.handle.substring(0, 1).toUpperCase() : 'G'}
+                        </div>
+                    </div>
+                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {user?.displayName || 'Degen Operator'}
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                            ${balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </div>
+                    </div>
+                    <div style={{ fontSize: 14 }}>➜</div>
                 </div>
 
-                <div className="nav-card">
-                    <button className="btn-primary" style={{ width: "100%" }} onClick={handleMine}>
-                        FARM (+{effectiveClickYield})
-                    </button>
+                {/* Quick YPS Ticker (Infrastructure style) */}
+                <div style={{
+                    padding: '0 16px 24px 16px',
+                    fontSize: 12,
+                    color: 'var(--text-muted)',
+                    fontFamily: 'monospace',
+                    display: 'flex',
+                    alignItems: 'center'
+                }}>
+                    <span style={{ color: 'var(--accent-green)' }}>▲ ${yps.toFixed(2)}/s</span>
+                    <span style={{ margin: '0 8px', opacity: 0.3 }}>|</span>
+                    {/* Show Level by default, or Prestige if active (>1) */}
+                    {prestigeMultiplier > 1.0 ? (
+                        <span>x{prestigeMultiplier.toFixed(2)}</span>
+                    ) : (
+                        <span style={{ color: 'var(--text-primary)' }}>Lvl {level}</span>
+                    )}
                 </div>
-
-                <div className="nav-card">
-                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>
-                        PRESTIGE
-                    </div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: "var(--accent-gold)", marginBottom: 8 }}>
-                        x{prestigeMultiplier.toFixed(2)}
-                    </div>
-                    <button
-                        className="btn-primary"
-                        style={{ width: "100%", fontSize: 13 }}
-                        onClick={handlePrestigeClick}
-                    >
-                        Prestige
-                    </button>
-                </div>
+                <div style={{ minHeight: '120px' }}></div>
             </aside>
 
             {/* CENTER MAIN */}
-            <main className="app-main">
-                {centerContent}
+            <main className="app-main zone-center" style={{ position: 'relative', zIndex: 10, paddingBottom: '150px' }}>
+                <div key={activeTab} className="tab-enter" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {centerContent}
+                </div>
             </main>
 
-            {/* RIGHT SIDEBAR */}
-            <aside className="app-right">
-                <div className="panel" style={{ marginBottom: 16 }}>
-                    <div className="panel-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Ecosystem</span>
-                        <button
-                            onClick={(e) => {
-                                e.currentTarget.style.opacity = 0.5;
-                                fetchBagsStatus().then(() => e.currentTarget.style.opacity = 1);
-                            }}
-                            title="Force Refresh Data"
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: 14,
-                                padding: 0
-                            }}
-                        >
-                            🔄
-                        </button>
+            {/* RIGHT SIDEBAR (Hidden in Wide Mode) */}
+            {!isWideMode && (
+                <aside className="app-right zone-right surface-subordinate" style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', paddingBottom: '120px' }}>
+                    {activeTab === 'streams' && (
+                        <TrendingPanel />
+                    )}
+
+                    {/* BAGS WIDGET */}
+                    <div style={{ marginBottom: 16 }}>
+                        <BagsWidget />
                     </div>
-                    <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                        {marketStats?.stale && (
-                            <div style={{
-                                background: 'rgba(234, 179, 8, 0.15)',
-                                color: '#eab308',
-                                padding: '4px 8px',
-                                borderRadius: 4,
-                                marginBottom: 8,
-                                fontSize: 11,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6
-                            }}>
-                                <span>⚠️ Data Delayed</span>
-                            </div>
-                        )}
-                        {/* Bags Status Error (Network) */}
-                        {bagsStatusError && (
-                            <div style={{ color: '#ef4444', marginBottom: 8, fontSize: 11 }}>
-                                📡 Connection Issues
-                            </div>
-                        )}
 
-                        {user?.holderTier !== undefined ? (
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                                <span>Status</span>
-                                <TierBadge tier={user.holderTier} />
+                    {/* ECOSYSTEM STATUS */}
+                    <div style={{ marginBottom: 16 }}>
+                        <EcosystemMoodPanel />
+                    </div>
+                    <div className="panel">
+                        <div className="panel-title">Stats</div>
+                        <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                                <span>Lifetime Yield</span>
+                                <span style={{ fontWeight: 600 }}>${Math.floor(lifetimeYield).toLocaleString()}</span>
                             </div>
-                        ) : (
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                                <span>Status</span>
-                                <span style={{ fontSize: 12 }}>Guest</span>
-                            </div>
-                        )}
-
-                        <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 8 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                                <span>Market Mood</span>
-                                <span style={{
-                                    fontWeight: 700,
-                                    color: MOOD_CONFIG[marketStats?.mood]?.color || '#9ca3af',
-                                    letterSpacing: '0.05em'
-                                }}>
-                                    {marketStats?.mood || 'QUIET'}
-                                </span>
-                            </div>
-
-                            {/* Tags / Analytics Display */}
-                            {marketStats?.tags && marketStats.tags.length > 0 && (
-                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8, justifyContent: 'flex-end' }}>
-                                    {marketStats.tags.map(tag => (
-                                        <span key={tag} style={{
-                                            fontSize: 10,
-                                            background: 'rgba(255,255,255,0.05)',
-                                            padding: '1px 4px',
-                                            borderRadius: 4,
-                                            color: 'var(--text-secondary)'
-                                        }}>
-                                            {tag}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: 'var(--text-muted)' }}>
-                                <span>24h Vol</span>
-                                <span>{(marketStats?.volume24h || 0).toLocaleString()}</span>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                <span>Total Clicks</span>
+                                <span style={{ fontWeight: 600 }}>{totalClicks}</span>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div className="panel">
-                    <div className="panel-title">Stats</div>
-                    <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                            <span>Lifetime Yield</span>
-                            <span style={{ fontWeight: 600 }}>${Math.floor(lifetimeYield).toLocaleString()}</span>
-                        </div>
-                        <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span>Total Clicks</span>
-                            <span style={{ fontWeight: 600 }}>{totalClicks}</span>
-                        </div>
-                    </div>
-                </div>
-            </aside>
 
-            <ConfirmationModal
-                isOpen={modalConfig.isOpen}
-                title={modalConfig.title}
-                message={modalConfig.message}
-                onConfirm={modalConfig.onConfirm}
-                onCancel={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
-            />
+                    {/* SYSTEM FEED - "The Pulse" (HIDDEN BY USER REQUEST) */}
+                    {/* <div style={{ marginTop: 'auto', flexShrink: 0 }}>
+                        <SystemFeed limit={6} />
+                    </div> */}
+                </aside>
+            )}
+
         </div>
     );
+
 }
 
 function getMoodColor(mood) {
