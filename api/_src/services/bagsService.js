@@ -292,7 +292,9 @@ async function refreshSnapshot() {
 const FALLBACK_RPCS = [
     "https://api.mainnet-beta.solana.com",
     "https://rpc.ankr.com/solana",
-    "https://solana-mainnet.rpc.extrnode.com"
+    "https://solana-mainnet.rpc.extrnode.com",
+    "https://api.tatum.io/v3/blockchain/node/solana-mainnet",
+    "https://solana-api.projectserum.com"
 ];
 
 async function fetchHoldersFromRPC() {

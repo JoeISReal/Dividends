@@ -55,9 +55,6 @@ export default function EcosystemOverview() {
     const metrics = [
         { label: 'FEES COLLECTED', value: stats.fees },
         { label: 'ACTIVE HOLDERS', value: stats.holders },
-        // Placeholder for now as backend doesn't track distribution time yet
-        { label: 'LAST DIST', value: '12m AGO' },
-        { label: 'NEXT EST', value: '48m' },
     ];
 
     return (
