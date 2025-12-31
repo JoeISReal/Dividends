@@ -1,6 +1,10 @@
 {
     "rewrites": [
         {
+            "source": "/api/bags/token/top-holders",
+            "destination": "/api/holders.js"
+        },
+        {
             "source": "/api/(.*)",
             "destination": "/api/index.js"
         },
