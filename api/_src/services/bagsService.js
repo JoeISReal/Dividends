@@ -59,7 +59,8 @@ export async function init(db) {
 export function getHolderTier(walletAddress) {
     // Guardrail: Safe default if no snapshot exists
     if (!_currentSnapshot) {
-        return { tier: 'UNKNOWN', balanceApprox: 0, lastSync: new Date(), stale: true };
+        // Return a valid empty state instead of potentially crashing later
+        return { tier: 'MEMBER', balanceApprox: 0, lastSync: new Date().toISOString(), stale: true };
     }
 
     // Guardrail: Check for staleness
@@ -516,6 +517,11 @@ export async function getTokenFees(mint) {
 
 
 export async function getTopHolders(mint) {
-    const lb = await getLeaderboard();
-    return lb.topHolders;
+    try {
+        const lb = await getLeaderboard();
+        return lb.topHolders || [];
+    } catch (e) {
+        console.error("[BagsService] getTopHolders failed:", e);
+        return [];
+    }
 }
