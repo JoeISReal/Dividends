@@ -301,45 +301,99 @@ async function fetchHoldersFromRPC() {
     const targets = primary ? [primary, ...FALLBACK_RPCS] : FALLBACK_RPCS;
 
     for (const rpcUrl of targets) {
-        try {
-            if (!rpcUrl) continue;
-            console.log(`[BagsService] Fetching holders via RPC: ${rpcUrl}...`);
+        if (!rpcUrl) continue;
+        console.log(`[BagsService] Fetching holders via RPC: ${rpcUrl}...`);
 
+        try {
             const connection = new Connection(rpcUrl, 'confirmed');
 
-            // Set timeout for connection manually if possible, or trust web3.js default
-            // web3.js connection doesn't support timeout in constructor easily, 
-            // but the fetch underneath might. We'll rely on try/catch.
+            // Strategy 1: Full Scan (Heavy, but gets Total Count)
+            // Public RPCs often block this. If it fails, we fall back to Strategy 2.
+            try {
+                // Short timeout for heavy call to fail fast
+                const accounts = await Promise.race([
+                    connection.getParsedProgramAccounts(
+                        TOKEN_PROGRAM_ID,
+                        {
+                            filters: [
+                                { dataSize: 165 },
+                                { memcmp: { offset: 0, bytes: DIVIDENDS_MINT } },
+                            ],
+                        }
+                    ),
+                    new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 15000))
+                ]);
 
-            const accounts = await connection.getParsedProgramAccounts(
-                TOKEN_PROGRAM_ID,
-                {
-                    filters: [
-                        { dataSize: 165 },
-                        { memcmp: { offset: 0, bytes: DIVIDENDS_MINT } },
-                    ],
-                }
-            );
+                console.log(`[BagsService] Heavy scan success via ${rpcUrl}`);
+                return accounts.map(a => ({
+                    wallet: a.account.data.parsed.info.owner,
+                    balance: a.account.data.parsed.info.tokenAmount.uiAmount
+                })).filter(h => h.balance > 0);
 
-            const holders = accounts.map(account => {
-                const parsedInfo = account.account.data.parsed.info;
-                return {
-                    wallet: parsedInfo.owner,
-                    balance: parsedInfo.tokenAmount.uiAmount
-                };
-            }).filter(h => h.balance > 0);
-
-            console.log(`[BagsService] Success via ${rpcUrl}! Fetched ${holders.length} holders.`);
-            return holders;
+            } catch (heavyError) {
+                console.warn(`[BagsService] Heavy scan failed via ${rpcUrl} (${heavyError.message}). Trying Light Scan...`);
+                // Fallback to Strategy 2 immediately on same RPC
+                return await fetchTopHoldersLight(connection);
+            }
 
         } catch (e) {
-            console.warn(`[BagsService] RPC Attempt Failed (${rpcUrl}): ${e.message}`);
-            // Continue to next
+            console.warn(`[BagsService] Connection failed to ${rpcUrl}: ${e.message}`);
         }
     }
 
     console.error("[BagsService] All RPC attempts failed.");
     return null;
+}
+
+// Strategy 2: Light Scan (Top 20 Only) - Very reliable on public RPCs
+async function fetchTopHoldersLight(connection) {
+    try {
+        const largest = await connection.getTokenLargestAccounts(new PublicKey(DIVIDENDS_MINT));
+        if (!largest || !largest.value) return null;
+
+        const tokenAccounts = largest.value.slice(0, 50); // Get up to 20 usually
+        const pubkeys = tokenAccounts.map(t => t.address);
+
+        // Fetch account info to get Owners
+        const accountInfos = await connection.getMultipleAccountsInfo(pubkeys);
+
+        const results = [];
+        // Manual parse of Token Account Layout (or rely on UI Amount if trusted)
+        // getTokenLargestAccounts gives UI Amount mostly? 
+        // Actually it gives uiAmount in the first call response!
+
+        // We need OWNERS. getTokenLargestAccounts result is { address, amount, decimals, uiAmountString }
+        // Wait, largest.value items are { address: PublicKey, amount: string, decimals: number, uiAmount: number, uiAmountString: string }
+        // But address is the TOKEN ACCOUNT address, not the Wallet.
+        // We must fetch the Token Account Data to read the generic SPL "owner" field.
+
+        // Use web3.js layout parsing for Owner? 
+        // Or getParsedMultipleAccounts?
+        // Let's use getParsedMultipleAccountsInfo (lighter) if available or just getMultipleAccounts & parse.
+        // connection.getMultipleParsedAccounts? No.
+
+        // Let's use getMultipleAccountsInfo and simple parse.
+        // Offset 32 is Owner (Public Key) in SPL Token Layout.
+
+        accountInfos.forEach((info, i) => {
+            if (!info) return;
+            const data = info.data;
+            if (data.length < 64) return; // safety
+
+            // Owner is at offset 32 (after Mint 32)
+            const owner = new PublicKey(data.slice(32, 64)).toBase58();
+            const balance = tokenAccounts[i].uiAmount;
+
+            results.push({ wallet: owner, balance });
+        });
+
+        console.log(`[BagsService] Light scan success! Retrieved ${results.length} top holders.`);
+        return results;
+
+    } catch (e) {
+        console.error(`[BagsService] Light scan failed: ${e.message}`);
+        return null;
+    }
 }
 
 function analyzeSnapshot(currentHolders, previousSnapshot, volume24h) {
