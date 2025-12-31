@@ -72,7 +72,8 @@ export default function CommunityGravity() {
                 console.warn("All RPCs failing. Using Mock Fallback.");
                 setHolders(Array.from({ length: 50 }, (_, i) => ({
                     rank: i + 1,
-                    displayWallet: `MOCK...${i}X`,
+                    // EXPLICIT FAILURE INDICATOR
+                    displayWallet: `RPC_FAIL_${i}`,
                     balance: Math.floor(10000000 * Math.pow(0.85, i))
                 })));
                 setLoading(false);
@@ -86,49 +87,41 @@ export default function CommunityGravity() {
     if (loading) return <div className="p-4 text-xs text-muted">Loading Gravity Well...</div>;
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-            {/* Header with improved styling */}
-            <div style={{
-                marginBottom: '12px',
-                paddingLeft: '4px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'baseline'
             }}>
                 <span className="text-label">GRAVITY WELL</span>
                 <span className="text-label" style={{ fontSize: '10px', opacity: 0.5 }}>TOP 100</span>
-            </div>
+            </div >
 
-            <div className="surface-secondary" style={{
-                flex: 1,
-                overflowY: 'auto',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-subtle)',
-                padding: '0'
+    <div className="surface-secondary" style={{
+        flex: 1,
+        overflowY: 'auto',
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--border-subtle)',
+        padding: '0'
+    }}>
+        {holders.map((h) => (
+            <div key={h.rank} style={{
+                display: 'grid',
+                gridTemplateColumns: '30px 1fr auto',
+                gap: '12px',
+                alignItems: 'center',
+                padding: h.rank <= 3 ? '12px 16px' : '8px 16px',
+                borderBottom: '1px solid var(--border-subtle)',
+                background: h.rank <= 3 ? 'rgba(255,255,255,0.02)' : 'transparent',
+                fontSize: '13px'
             }}>
-                {holders.map((h) => (
-                    <div key={h.rank} style={{
-                        display: 'grid',
-                        gridTemplateColumns: '30px 1fr auto',
-                        gap: '12px',
-                        alignItems: 'center',
-                        padding: h.rank <= 3 ? '12px 16px' : '8px 16px',
-                        borderBottom: '1px solid var(--border-subtle)',
-                        background: h.rank <= 3 ? 'rgba(255,255,255,0.02)' : 'transparent',
-                        fontSize: '13px'
-                    }}>
-                        <div className="text-value" style={{ color: h.rank <= 3 ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
-                            #{h.rank}
-                        </div>
-                        <div className="text-value" style={{ fontFamily: 'var(--font-mono)', opacity: 0.9 }}>
-                            {h.displayWallet}
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <TierBadge balance={h.balance} size="xs" showName={true} />
-                        </div>
-                    </div>
-                ))}
+                <div className="text-value" style={{ color: h.rank <= 3 ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
+                    #{h.rank}
+                </div>
+                <div className="text-value" style={{ fontFamily: 'var(--font-mono)', opacity: 0.9 }}>
+                    {h.displayWallet}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <TierBadge balance={h.balance} size="xs" showName={true} />
+                </div>
             </div>
-        </div>
+        ))}
+    </div>
+        </div >
     );
 }
