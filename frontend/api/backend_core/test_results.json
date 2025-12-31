@@ -1,0 +1,18 @@
+{
+  "https://public-api-v2.bags.fm/api/v1/tokens?sort=trending": {
+    "status": 404,
+    "data": "Non-JSON: <!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<"
+  },
+  "https://public-api-v2.bags.fm/api/v1/tokens?sort=volume": {
+    "status": 404,
+    "data": "Non-JSON: <!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<"
+  },
+  "https://public-api-v2.bags.fm/api/v1/tokens": {
+    "status": 404,
+    "data": "Non-JSON: <!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<"
+  },
+  "https://bags.fm/api/v1/tokens?sort=trending": {
+    "status": 404,
+    "data": "Non-JSON: <!DOCTYPE html><html class=\"__variable_09f25f __variable_457bab dark\" lang=\"en\"><head><meta charSet="
+  }
+}
