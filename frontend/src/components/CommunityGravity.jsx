@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { Connection, PublicKey } from '@solana/web3.js';
 import { TierBadge } from './TierBadge';
+
+const RPC_ENDPOINTS = [
+    "https://api.mainnet-beta.solana.com", // Reliable for getLargestAccounts
+    "https://solana-mainnet.rpc.extrnode.com",
+    "https://rpc.ankr.com/solana"
+];
 
 export default function CommunityGravity() {
     const [holders, setHolders] = useState([]);
@@ -7,9 +14,10 @@ export default function CommunityGravity() {
 
     useEffect(() => {
         let mounted = true;
+
         const fetchHolders = async () => {
             try {
-                // 1. Try Backend API
+                // 1. Try Backend API first
                 const res = await fetch('/api/bags/token/top-holders');
 
                 let data = null;
@@ -23,11 +31,12 @@ export default function CommunityGravity() {
                 if (isValid) {
                     mapAndSetHolders(data);
                 } else {
+                    // Backend alive but gave bad data (or mock)
                     throw new Error("Backend Returned Invalid/Mock Data");
                 }
 
             } catch (e) {
-                console.warn("Backend failed, attempting Client-Side Rescue...", e);
+                console.warn("Backend unavailable/invalid, triggering Client-Side Rescue...", e);
                 await rescueFetch();
             } finally {
                 if (mounted) setLoading(false);
@@ -35,44 +44,46 @@ export default function CommunityGravity() {
         };
 
         const rescueFetch = async () => {
-            // Fallback to public RPC
-            const RPC_URL = "https://solana-mainnet.rpc.extrnode.com";
-            // Alternative: "https://api.mainnet-beta.solana.com" (often rate limited for getProgramAccounts but ok for getLargest)
-            try {
-                const { Connection, PublicKey } = await import('@solana/web3.js');
-                const conn = new Connection(RPC_URL);
-                const MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
+            // Fallback to public RPCs loop
+            const MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
 
-                // Light call: Top 20 holders
-                const largest = await conn.getTokenLargestAccounts(new PublicKey(MINT));
-                const accounts = largest.value || [];
+            for (const rpc of RPC_ENDPOINTS) {
+                try {
+                    console.log("Attempting rescue via:", rpc);
+                    const conn = new Connection(rpc, 'confirmed');
 
-                const mapped = accounts.map((a, i) => ({
-                    rank: i + 1,
-                    wallet: 'Loading...', // We only get Address (Token Account), not Wallet (Owner) from this call easily without parsing.
-                    // Wait, getTokenLargestAccounts returns the Token Account Address.
-                    // Showing Token Account is better than "MOCK".
-                    // The "address" field IS the token account.
-                    // We can't easily get the Owner without 20 more calls.
-                    // Let's display the Item Address and maybe label it "Holder #i" or just the addr.
-                    // Actually, most users won't know the difference vs Wallet for a quick check.
-                    displayWallet: (a.address.toString()).slice(0, 4) + '...' + (a.address.toString()).slice(-4),
-                    balance: a.uiAmount,
-                    isRescue: true
-                }));
+                    // Light call: Top 20 holders
+                    const largest = await conn.getTokenLargestAccounts(new PublicKey(MINT));
+                    const accounts = largest.value || [];
 
-                if (mounted) setHolders(mapped);
+                    if (accounts.length === 0) throw new Error("Empty accounts list");
 
-            } catch (rescueErr) {
-                console.error("Rescue failed:", rescueErr);
-                // Final Fallback: The Nice Static Mock
-                if (mounted) {
-                    setHolders(Array.from({ length: 50 }, (_, i) => ({
+                    const mapped = accounts.map((a, i) => ({
                         rank: i + 1,
-                        displayWallet: `MOCK...${i}X`,
-                        balance: Math.floor(10000000 * Math.pow(0.85, i))
-                    })));
+                        // Use Address as display since we don't have Owner map here yet
+                        wallet: a.address.toString(),
+                        displayWallet: (a.address.toString()).slice(0, 4) + '...' + (a.address.toString()).slice(-4),
+                        balance: a.uiAmount,
+                        isRescue: true
+                    }));
+
+                    if (mounted) {
+                        setHolders(mapped);
+                        return; // Success, exit loop
+                    }
+                } catch (err) {
+                    console.warn(`Rescue failed on ${rpc}:`, err);
                 }
+            }
+
+            // If all RPCs fail, revert to Static Mock
+            console.error("All Rescue RPCs failed. Showing Static Mock.");
+            if (mounted) {
+                setHolders(Array.from({ length: 50 }, (_, i) => ({
+                    rank: i + 1,
+                    displayWallet: `MOCK...${i}X`,
+                    balance: Math.floor(10000000 * Math.pow(0.85, i))
+                })));
             }
         };
 
