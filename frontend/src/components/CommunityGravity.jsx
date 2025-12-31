@@ -1,54 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { TierBadge } from './TierBadge';
 
-const RPC_ENDPOINTS = [
-    "https://api.mainnet-beta.solana.com", // Reliable for getLargestAccounts
-    "https://solana-mainnet.rpc.extrnode.com",
-    "https://rpc.ankr.com/solana"
-];
 
 export default function CommunityGravity() {
     const [holders, setHolders] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        console.log("CommunityGravity: Mounting v1.3 (Lifeboat Active)");
+        console.log("CommunityGravity: Mounting v2.0 (Client-Only Mode)");
         let mounted = true;
 
-        const fetchHolders = async () => {
-            try {
-                // 1. Try Backend API (Lifeboat)
-                const res = await fetch('/api/holders');
+        const RPC_LIST = [
+            "https://solana-mainnet.rpc.extrnode.com",
+            "https://rpc.ankr.com/solana",
+            "https://api.mainnet-beta.solana.com"
+        ];
 
-                let data = null;
-                if (res.ok) {
-                    data = await res.json();
-                }
-
-                // 2. Validate Data (If failed or empty/mock, try rescue)
-                const isValid = Array.isArray(data) && data.length > 0 && !data[0].wallet?.startsWith('MOCK');
-
-                if (isValid) {
-                    mapAndSetHolders(data);
-                } else {
-                    // Backend alive but gave bad data (or mock)
-                    throw new Error("Backend Returned Invalid/Mock Data");
-                }
-
-            } catch (e) {
-                console.warn("Backend unavailable/invalid, triggering Client-Side Rescue...", e);
-                await rescueFetch();
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
-
-        const rescueFetch = async () => {
-            // Fallback to public RPCs loop (Raw Fetch to avoid web3.js Polyfill issues)
+        const fetchDirectly = async () => {
             const MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
-
-            // Raw JSON RPC Payload
-            const payload = {
+            const payload = JSON.stringify({
                 jsonrpc: "2.0",
                 id: 1,
                 method: "getTokenLargestAccounts",
@@ -56,68 +26,60 @@ export default function CommunityGravity() {
                     MINT,
                     { commitment: "confirmed" }
                 ]
-            };
+            });
 
-            for (const rpc of RPC_ENDPOINTS) {
+            for (const rpc of RPC_LIST) {
                 try {
-                    console.log("Attempting rescue via (RAW):", rpc);
+                    if (!mounted) return;
+                    console.log(`Gravity Fetching via: ${rpc}`);
 
                     const response = await fetch(rpc, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: payload
                     });
 
-                    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                    if (!response.ok) continue; // Try next
 
                     const json = await response.json();
-                    if (json.error) throw new Error(`RPC Error: ${json.error.message}`);
+                    if (json.error || !json.result?.value) continue;
 
-                    const accounts = json.result?.value || [];
+                    const accounts = json.result.value;
+                    if (!accounts.length) continue;
 
-                    if (accounts.length === 0) throw new Error("Empty accounts list");
-
-                    const mapped = accounts.slice(0, 50).map((a, i) => ({
-                        rank: i + 1,
-                        // Use Address as display since we don't have Owner map here yet
-                        wallet: a.address,
-                        displayWallet: (a.address).slice(0, 4) + '...' + (a.address).slice(-4),
-                        balance: a.uiAmount,
-                        isRescue: true
+                    // Success - Map and Set
+                    const mapped = accounts.slice(0, 50).map((acc, index) => ({
+                        rank: index + 1,
+                        // Address IS the wallet for this purpose
+                        wallet: acc.address,
+                        displayWallet: acc.address.slice(0, 4) + '...' + acc.address.slice(-4),
+                        balance: acc.uiAmount,
+                        tier: 'MEMBER' // Logic for tiers can be added here if needed
                     }));
 
                     if (mounted) {
                         setHolders(mapped);
-                        return; // Success, exit loop
+                        setLoading(false);
+                        return; // Done
                     }
-                } catch (err) {
-                    console.warn(`Rescue failed on ${rpc}:`, err);
+                } catch (e) {
+                    console.warn(`RPC Skipped (${rpc}):`, e);
                 }
             }
 
-            // If all RPCs fail, revert to Static Mock
-            console.error("All Rescue RPCs failed. Showing Static Mock.");
+            // If we get here, all failed
             if (mounted) {
+                console.warn("All RPCs failing. Using Mock Fallback.");
                 setHolders(Array.from({ length: 50 }, (_, i) => ({
                     rank: i + 1,
                     displayWallet: `MOCK...${i}X`,
                     balance: Math.floor(10000000 * Math.pow(0.85, i))
                 })));
+                setLoading(false);
             }
         };
 
-        const mapAndSetHolders = (data) => {
-            if (!mounted) return;
-            const mapped = data.map((h, i) => ({
-                rank: i + 1,
-                wallet: h.wallet || `???`,
-                displayWallet: (h.wallet || '').slice(0, 4) + '...' + (h.wallet || '').slice(-4),
-                balance: h.balanceApprox || 0
-            }));
-            setHolders(mapped);
-        };
-
-        fetchHolders();
+        fetchDirectly();
         return () => { mounted = false; };
     }, []);
 
