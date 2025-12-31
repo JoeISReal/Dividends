@@ -2,11 +2,11 @@
     "rewrites": [
         {
             "source": "/api/holders",
-            "destination": "/api/holders"
+            "destination": "/api/holders.js"
         },
         {
             "source": "/api/test",
-            "destination": "/api/test"
+            "destination": "/api/test.js"
         },
         {
             "source": "/api/(.*)",
