@@ -32,10 +32,11 @@ export default function CommunityGravity() {
                 console.error("CommunityGravity Load Error:", e);
                 // Fallback to static mock if fetch fails
                 if (mounted) {
-                    setHolders(Array.from({ length: 10 }, (_, i) => ({
+                    setHolders(Array.from({ length: 50 }, (_, i) => ({
                         rank: i + 1,
                         displayWallet: `MOCK...${i}X`,
-                        balance: 10000000 / Math.pow(2, i) // Descending mock balances for diverse tiers
+                        // Slower decay to show diverse tiers (Whale -> Shark -> Dolphin -> Crab)
+                        balance: Math.floor(10000000 * Math.pow(0.85, i))
                     })));
                 }
             } finally {
