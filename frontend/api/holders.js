@@ -1,11 +1,7 @@
-const RPC_LIST = [
-    "https://solana-mainnet.rpc.extrnode.com",
-    "https://rpc.ankr.com/solana",
-    "https://api.mainnet-beta.solana.com"
-];
-
+// ZERO-DEPENDENCY LIFEBOAT
 export default async function handler(req, res) {
-    // CORS
+    // 1. CORS Headers
+    res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
     res.setHeader(
@@ -20,8 +16,14 @@ export default async function handler(req, res) {
 
     const MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
 
-    // JSON-RPC Payload
-    const payload = {
+    // Using a reliable public RPC list
+    const RPC_LIST = [
+        "https://api.mainnet-beta.solana.com",
+        "https://solana-mainnet.rpc.extrnode.com",
+        "https://rpc.ankr.com/solana"
+    ];
+
+    const payload = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
         method: "getTokenLargestAccounts",
@@ -29,26 +31,18 @@ export default async function handler(req, res) {
             MINT,
             { commitment: "confirmed" }
         ]
-    };
+    });
 
     let lastError = null;
 
     for (const rpc of RPC_LIST) {
         try {
-            console.log(`Lifeboat trying: ${rpc}`);
-
-            // Short timeout to fail fast and try next
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 4000);
-
+            // Native Fetch (available in Node 18+ Vercel Runtime)
             const response = await fetch(rpc, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-                signal: controller.signal
+                body: payload
             });
-
-            clearTimeout(timeoutId);
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
@@ -60,26 +54,20 @@ export default async function handler(req, res) {
 
             const result = accounts.slice(0, 50).map((acc, index) => ({
                 rank: index + 1,
-                wallet: acc.address, // Correct field for getTokenLargestAccounts
+                wallet: acc.address,
                 displayWallet: acc.address.slice(0, 4) + '...' + acc.address.slice(-4),
                 balance: acc.uiAmount,
                 balanceApprox: acc.uiAmount,
                 tier: 'MEMBER'
             }));
 
-            // Success!
             return res.status(200).json(result);
-
         } catch (e) {
-            console.warn(`RPC Failed (${rpc}):`, e.message);
+            console.warn(`[Lifeboat] RPC Failed ${rpc}: ${e.message}`);
             lastError = e.message;
         }
     }
 
-    // All failed
-    res.status(502).json({
-        error: "All RPCs failed",
-        detail: lastError,
-        mock: true
-    });
+    // Fail safe
+    res.status(502).json({ error: "All RPCs failed", details: lastError });
 }
