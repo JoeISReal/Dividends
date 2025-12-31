@@ -11,11 +11,11 @@ import { SystemFeed } from './components/SystemFeed';
 import { BagsWidget } from './components/BagsWidget';
 import { EcosystemMoodPanel } from './components/EcosystemMoodPanel';
 
-export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) {
+export function AppShell({ activeTab, onTabChange, centerContent }) {
     // Zustand store hooks
     const balance = useGameStore((s) => s.balance);
     const yps = useGameStore((s) => s.yps);
-    const level = useGameStore((s) => s.level); // Added Level
+    const level = useGameStore((s) => s.level);
     const lifetimeYield = useGameStore((s) => s.lifetimeYield);
     const totalClicks = useGameStore((s) => s.totalClicks);
     const yieldPerClick = useGameStore((s) => s.yieldPerClick);
@@ -40,7 +40,13 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
     const isWideMode = activeTab === 'degen-arena';
 
     return (
-        <div className={`app-shell bg-abstract-hero bg-overlay ${isWideMode ? 'wide-mode' : ''}`} style={{ position: 'relative', overflow: 'hidden' }}>
+        <div className={`app-shell bg-abstract-hero bg-overlay ${isWideMode ? 'wide-mode' : ''}`} style={{
+            position: 'relative',
+            overflow: 'hidden',
+            display: 'flex',
+            height: '100vh',
+            width: '100vw'
+        }}>
             {/* Ambient & HUD Layers */}
             <div className="ambient-grid animate-ambient-drift" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }} />
             <div className="hud-overlay" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}>
@@ -58,134 +64,122 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
             {isWideMode && <ArenaIntro />}
 
             {/* LEFT NAV (X-STYLE RAIL) */}
-            <aside className="nav-rail" style={{ position: 'relative', zIndex: 10, paddingBottom: '120px' }}>
-                {/* 1. APP LOGO (Minimal) */}
-                <div style={{ padding: '0 12px', marginBottom: 24, display: 'flex', alignItems: 'center' }}>
-                    <div style={{
-                        width: 32, height: 32, borderRadius: '50%', overflow: 'hidden',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                        <img src="/logo.png" alt="Divs" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {/* LEFT NAV — INFRA RAIL */}
+            <aside className="navRail">
+                {/* BRAND / SYSTEM */}
+                <div className="navRail__brand">
+                    <div className="navRail__logo">
+                        <img src="/logo.png" alt="DIVIDENDS" />
+                    </div>
+                    <div className="navRail__brandText">
+                        <span className="navRail__title">DIVIDENDS</span>
+                        <span className="navRail__status">SYSTEM ONLINE</span>
                     </div>
                 </div>
 
-                {/* 2. NAVIGATION LINKS */}
-                <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {/* PRIMARY NAV */}
+                <nav className="navRail__nav">
                     {[
                         { id: "dashboard", label: "Dashboard", icon: "🏠" },
                         { id: "streams", label: "Streams", icon: "📊" },
                         { id: "operations", label: "Operations", icon: "⚡" },
-                        { id: "degen-arena", label: "Degen Arena", icon: "🎰" },
+                        { id: "degen-arena", label: "Arena", icon: "🎰" },
                         { id: "leaderboard", label: "Leaderboard", icon: "🏆" },
                         { id: "community", label: "Community", icon: "🐦" },
                         { id: "settings", label: "Settings", icon: "⚙️" },
                         { id: "help", label: "Help", icon: "❓" },
-                    ].map(item => (
-                        <div
-                            key={item.id}
-                            className={`nav-item-x ${activeTab === item.id ? 'active' : ''}`}
-                            onClick={() => {
-                                onTabChange(item.id);
-                                soundManager.playClick();
-                            }}
-                        >
-                            <div className="nav-icon">{item.icon}</div>
-                            <span className="nav-label">{item.label}</span>
-                        </div>
-                    ))}
-
-                    {/* PRIMARY ACTION (FARM) */}
-                    <div style={{ padding: '16px 0', marginTop: 12 }}>
-                        <button
-                            onClick={handleMine}
-                            className="btn-action-primary"
-                            style={{
-                                width: '90%',
-                                borderRadius: 999,
-                                height: 52,
-                                fontSize: 17,
-                                fontWeight: 800,
-                                boxShadow: 'none', // Flat style constraint
-                                border: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                margin: '0 auto',
-                                background: 'var(--text-primary)', // White/Bright for X style "Post" button
-                                color: '#000'
-                            }}
-                        >
-                            FARM
-                        </button>
-                    </div>
+                    ].map(item => {
+                        const active = activeTab === item.id;
+                        return (
+                            <button
+                                key={item.id}
+                                className={`navRail__item ${active ? 'is-active' : ''}`}
+                                onClick={() => {
+                                    soundManager.playClick();
+                                    onTabChange(item.id);
+                                }}
+                                title={item.label}
+                            >
+                                <span className="navRail__icon">{item.icon}</span>
+                                <span className="navRail__label">{item.label}</span>
+                                {active && <span className="navRail__indicator" />}
+                            </button>
+                        );
+                    })}
                 </nav>
 
-                {/* 3. MINI PROFILE (Bottom Anchor) */}
-                <div style={{
-                    marginTop: 'auto',
-                    padding: 12,
-                    borderRadius: 999,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    cursor: 'pointer',
-                    transition: 'background 0.2s',
-                    position: 'relative'
-                }}
-                    className="nav-item-x" /* Reuse hover styles */
-                    onClick={() => {
-                        soundManager.playClick();
-                        onTabChange('prestige');
-                    }}
-                >
-                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#333', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        {/* Placeholder Avatar or Initials */}
-                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-green)', color: '#000', fontWeight: 700 }}>
-                            {user?.handle ? user.handle.substring(0, 1).toUpperCase() : 'G'}
-                        </div>
-                    </div>
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                        <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {user?.displayName || 'Degen Operator'}
-                        </div>
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                            ${balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                        </div>
-                    </div>
-                    <div style={{ fontSize: 14 }}>➜</div>
+                {/* PRIMARY ACTION */}
+                <div className="navRail__action">
+                    <button className="navRail__farm" onClick={handleMine}>
+                        <span className="navRail__icon">⛏</span>
+                        <span className="navRail__label">FARM</span>
+                    </button>
                 </div>
 
-                {/* Quick YPS Ticker (Infrastructure style) */}
-                <div style={{
-                    padding: '0 16px 24px 16px',
-                    fontSize: 12,
-                    color: 'var(--text-muted)',
-                    fontFamily: 'monospace',
-                    display: 'flex',
-                    alignItems: 'center'
-                }}>
-                    <span style={{ color: 'var(--accent-green)' }}>▲ ${yps.toFixed(2)}/s</span>
-                    <span style={{ margin: '0 8px', opacity: 0.3 }}>|</span>
-                    {/* Show Level by default, or Prestige if active (>1) */}
-                    {prestigeMultiplier > 1.0 ? (
-                        <span>x{prestigeMultiplier.toFixed(2)}</span>
-                    ) : (
-                        <span style={{ color: 'var(--text-primary)' }}>Lvl {level}</span>
-                    )}
+                {/* OPERATOR FOOTER */}
+                <div className="navRail__operator">
+                    <div className="navRail__avatar">
+                        {user?.handle?.[0]?.toUpperCase() || 'O'}
+                    </div>
+
+                    <div className="navRail__operatorText">
+                        <div className="navRail__nameRow">
+                            <span className="navRail__name">
+                                {user?.displayName || 'Operator'}
+                            </span>
+                            <TierBadge />
+                        </div>
+                        <div className="navRail__meta mono">
+                            ${balance.toFixed(0)} · ${yps.toFixed(2)}/s · Lvl {level}
+                        </div>
+                    </div>
+
+                    <span className="navRail__more">⋯</span>
                 </div>
-                <div style={{ minHeight: '120px' }}></div>
+
+                {/* SYSTEM FOOTER */}
+                <div className="navRail__footer mono">
+                    SOLANA_MAIN · v0.9.1
+                </div>
             </aside>
 
             {/* CENTER MAIN */}
-            <main className="app-main zone-center" style={{ position: 'relative', zIndex: 10, paddingBottom: '150px' }}>
-                <div key={activeTab} className="tab-enter" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <main className="app-main zone-center" style={{
+                position: 'relative',
+                zIndex: 10,
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden', // Scroll handled by activeTab container if needed, or we allow main to scroll.
+                padding: '0'
+            }}>
+                <div key={activeTab} className="tab-enter" style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    minHeight: 0,
+                    overflowY: 'auto', // Scroll content here
+                    padding: '24px',
+                    paddingBottom: '40px'
+                }}>
                     {centerContent}
                 </div>
             </main>
 
             {/* RIGHT SIDEBAR (Hidden in Wide Mode) */}
             {!isWideMode && (
-                <aside className="app-right zone-right surface-subordinate" style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', paddingBottom: '120px' }}>
+                <aside className="app-right zone-right surface-subordinate" style={{
+                    position: 'relative',
+                    zIndex: 10,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '320px',
+                    flexShrink: 0,
+                    height: '100%',
+                    overflowY: 'auto',
+                    padding: '24px',
+                    borderLeft: '1px solid var(--border-subtle)'
+                }}>
                     {activeTab === 'streams' && (
                         <TrendingPanel />
                     )}
@@ -199,6 +193,14 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
                     <div style={{ marginBottom: 16 }}>
                         <EcosystemMoodPanel />
                     </div>
+
+                    {/* SYSTEM FEED */}
+                    {!isWideMode && (
+                        <div style={{ marginBottom: 16 }}>
+                            <SystemFeed />
+                        </div>
+                    )}
+
                     <div className="panel">
                         <div className="panel-title">Stats</div>
                         <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
@@ -212,21 +214,14 @@ export function AppShell({ activeTab, onTabChange, centerContent, liveDegens }) 
                             </div>
                         </div>
                     </div>
-
-                    {/* SYSTEM FEED - "The Pulse" (HIDDEN BY USER REQUEST) */}
-                    {/* <div style={{ marginTop: 'auto', flexShrink: 0 }}>
-                        <SystemFeed limit={6} />
-                    </div> */}
                 </aside>
             )}
 
         </div>
     );
-
 }
 
 function getMoodColor(mood) {
-    // Legacy helper kept for safety, but UI above uses registry directly
     const config = MOOD_CONFIG[mood];
     return config ? config.color : '#9ca3af';
 }

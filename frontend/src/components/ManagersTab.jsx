@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function ManagersTab({ managers, ownedManagers, balance, onBuy }) {
+export default function ManagersTab({ managers, ownedManagers = [], balance, onBuy }) {
     return (
         <div className="managers-tab">
             <h2>Managers</h2>

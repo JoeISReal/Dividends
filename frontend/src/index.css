@@ -212,50 +212,7 @@ body {
 /* -------------------------
    X-STYLE SIDEBAR (INFRASTRUCTURE RAIL)
 -------------------------- */
-.nav-rail {
-  width: 240px;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--border-muted);
-  background: var(--bg-root);
-  /* Ensure it sits above ambient layers if needed, but usually z-index handles that */
-  padding: 12px;
-  box-sizing: border-box;
-}
 
-.nav-item-x {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
-  border-radius: 999px;
-  cursor: pointer;
-  color: var(--text-secondary);
-  background: transparent;
-  margin-bottom: 4px;
-  transition: none;
-  /* ZERO motion rule */
-}
-
-.nav-item-x:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
-}
-
-.nav-item-x.active {
-  color: var(--text-primary);
-  font-weight: 700;
-}
-
-.nav-item-x .nav-icon {
-  font-size: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-}
 
 
 /* -------------------------

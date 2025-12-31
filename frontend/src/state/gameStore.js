@@ -136,21 +136,60 @@ export const useGameStore = create(
                 const newSignals = directiveEngine.check(state);
                 if (!newSignals.length) return;
 
-                set((s) => ({
-                    signals: directiveEngine.trim([...(s.signals || []), ...newSignals]),
-                }));
+                // Deduplicate: exact match on message + type
+                // We want to keep the NEW signal and remove the OLD one.
+                const newMessages = new Set(newSignals.map(s => `${s.type}:${s.message}`));
+
+                const filteredOld = (state.signals || []).filter(s =>
+                    !newMessages.has(`${s.type}:${s.message}`)
+                );
+
+                // Add new signals to the FRONT (Newest First) to match emitSignal behavior
+                const combined = [...newSignals.reverse(), ...filteredOld].slice(0, 10);
+
+                set({ signals: combined });
             },
 
-            emitSignal: (type, message) => { // type: 'info' | 'warning' | 'success' | 'danger'
+            emitSignal: (arg1, arg2) => {
                 set(state => {
-                    const newSignal = {
-                        id: Date.now() + Math.random(),
-                        type,
-                        message,
-                        timestamp: Date.now()
-                    };
+                    let newSignal;
+
+                    // Handle legacy signature: emitSignal(type, message)
+                    if (typeof arg1 === 'string') {
+                        newSignal = {
+                            id: Date.now() + Math.random(),
+                            type: arg1,
+                            message: arg2,
+                            timestamp: Date.now()
+                        };
+                    }
+                    // Handle new object signature: emitSignal({ type, message, domain, severity })
+                    else if (typeof arg1 === 'object') {
+                        newSignal = {
+                            id: Date.now() + Math.random(),
+                            timestamp: Date.now(),
+                            ...arg1
+                        };
+                    }
+
+                    // Safety fallback
+                    if (!newSignal || !newSignal.message) {
+                        console.warn("Invalid signal emitted", arg1, arg2);
+                        return {};
+                    }
+
+                    // Deduplication: If identical message exists, remove it + re-add at top (bump timestamp)
+                    const existingIndex = state.signals.findIndex(s =>
+                        s.message === newSignal.message && s.type === newSignal.type
+                    );
+
+                    let newSignals = [...state.signals];
+                    if (existingIndex !== -1) {
+                        newSignals.splice(existingIndex, 1);
+                    }
+
                     // Keep last 10 signals
-                    return { signals: [newSignal, ...state.signals].slice(0, 10) };
+                    return { signals: [newSignal, ...newSignals].slice(0, 10) };
                 });
             },
 

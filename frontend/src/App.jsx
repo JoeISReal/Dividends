@@ -9,7 +9,7 @@ import StreamCard from './components/StreamCard';
 import OperationsTab from './components/OperationsTab';
 import StreamsTab from './components/StreamsTab';
 import HelpTab from './components/HelpTab';
-import CommunityTab from './components/CommunityTab';
+import CommunityOps from './pages/CommunityOps';
 import SettingsTab from './components/SettingsTab';
 import LeaderboardTab from './components/LeaderboardTab';
 import NotificationToast from './components/NotificationToast';
@@ -159,7 +159,7 @@ export default function App() {
   } else if (activeTab === 'leaderboard') {
     centerContent = <LeaderboardTab />;
   } else if (activeTab === 'community') {
-    centerContent = <CommunityTab />;
+    centerContent = <CommunityOps />;
   } else if (activeTab === 'settings') {
     centerContent = <SettingsTab />;
   } else if (activeTab === 'help') {
@@ -176,7 +176,6 @@ export default function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         centerContent={centerContent}
-        liveDegens={liveDegens}
       />
       <NotificationToast />
     </>

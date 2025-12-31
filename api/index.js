@@ -110,9 +110,16 @@ app.post('/api/click', (req, res) => {
     res.json({ success: true, yield: 1 * xpMultiplier, riskScore: risk.riskScore });
 });
 
+// --- COMMUNITY ROUTES ---
+import communityRouter from './_src/routes/community.js';
+app.use('/api/community', communityRouter);
+
 // Lazy Connection Middleware
 app.use(async (req, res, next) => {
-    if (db) return next();
+    if (db) {
+        req.app.locals.db = db; // Expose DB to routers
+        return next();
+    }
     if (!client) {
         return res.status(503).json({ error: "Database not configured (MONGO_URI missing)" });
     }
@@ -121,6 +128,7 @@ app.use(async (req, res, next) => {
             await client.connect();
         }
         db = client.db('dividends_game');
+        req.app.locals.db = db; // Expose DB to routers
         console.log("Connected to MongoDB Atlas");
         // Initialize Bags Service
         bagsService.init(db).catch(e => console.error("Bags Init Error:", e));

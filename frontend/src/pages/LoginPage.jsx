@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGameStore } from '../state/gameStore';
 import { soundManager } from '../game/SoundManager';
 import '../styles/dividends-theme.css';
+import '../styles/Login.css'; // Import the new styles
 import bs58 from 'bs58';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -13,7 +14,6 @@ export default function LoginPage() {
     const [walletError, setWalletError] = useState(null);
 
     const connectPhantom = async () => {
-        // Initialize sound on first interaction
         // Initialize sound on first interaction
         try {
             soundManager.resume();
@@ -33,7 +33,6 @@ export default function LoginPage() {
                 soundManager.playSuccess(); // Wallet found
                 const walletAddress = response.publicKey.toString();
 
-                // 2. Get Challenge
                 // 2. Get Challenge
                 const chRes = await fetch(`${API_BASE}/api/auth/challenge?wallet=${walletAddress}`, {
                     credentials: "include"
@@ -57,7 +56,6 @@ export default function LoginPage() {
                 const signatureBase58 = bs58.encode(signedMessage.signature);
 
                 // 4. Verify (Backend)
-                // Manual Verify
                 const verifyRes = await fetch(`${API_BASE}/api/auth/verify`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -87,7 +85,7 @@ export default function LoginPage() {
                     soundManager.playSuccess();
                     setLoginPhase('success');
 
-                    // Delay final state update
+                    // Delay final state update to show boot animation
                     setTimeout(async () => {
                         try {
                             // Direct State Hydration (No second fetch)
@@ -100,7 +98,7 @@ export default function LoginPage() {
                             setWalletError("Login State Update Failed");
                             setLoginPhase('idle');
                         }
-                    }, 800);
+                    }, 1500); // 1.5s delay for animation
                 } else {
                     soundManager.playError();
                     setWalletError(`Login Failed: ${errorMsg}`);
@@ -118,149 +116,89 @@ export default function LoginPage() {
             setWalletError(`Connection failed: ${err.message || err.toString()}`);
             setLoginPhase('idle');
         }
-        // Connection attempt finished (unless success)
     };
 
     return (
-        <div className="bg-abstract-hero bg-overlay" style={{
-            height: '100vh',
-            width: '100vw',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 20,
-            position: 'relative',
-            overflow: 'hidden'
-        }}>
+        <div className="login-page">
             {/* 1. Ambient Background Layer */}
-            <div className="ambient-grid" />
+            <div className="login-ambient-background" />
+            <div className="login-grid-overlay" />
 
             {/* 2. HUD Overlay Layer */}
-            <div className="hud-overlay">
-                <div className="hud-top-left">
-                    <div>SYSTEM: STANDBY</div>
-                    <div>NET: SOLANA</div>
-                </div>
-                <div className="hud-btm-right">
-                    <div>SECURE LINK</div>
-                    <div>V 0.9.1 BETA</div>
-                </div>
+            <div className="login-hud login-hud-tl">
+                <div>SYSTEM: STANDBY</div>
+                <div>NET: SOLANA [MAINNET]</div>
+            </div>
+            <div className="login-hud login-hud-tr">
+                <div>SECURE LINK</div>
+                <div>V 0.9.2</div>
+            </div>
+            <div className="login-hud login-hud-bl">
+                <div>EST. 2025</div>
+            </div>
+            <div className="login-hud login-hud-br">
+                <div>DIVIDENDS CORP</div>
             </div>
 
             {/* 3. Boot Overlay (Preserved Transition) */}
             {loginPhase === 'success' && (
-                <div className="boot-overlay">
-                    <div style={{ marginBottom: 16, fontSize: 32 }}>🚀</div>
-                    Entering Arena...
+                <div className="boot-sequence-overlay">
+                    <div className="boot-text">AUTHENTICATED</div>
+                    <div className="boot-bar" />
+                    <div className="boot-text" style={{ marginTop: 8, fontSize: 10, opacity: 0.7 }}>INITIALIZING SESSION...</div>
                 </div>
             )}
 
             {/* 4. Main Login Card */}
-            <div className={`login-card ${loginPhase === 'success' ? 'success' : ''}`} style={{
-                background: 'rgba(20, 20, 24, 0.85)',
-                backdropFilter: 'blur(16px)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: 24,
-                padding: '48px 40px',
-                width: '100%',
-                maxWidth: 440,
-                textAlign: 'center',
-                boxShadow: '0 30px 80px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.05)',
-                position: 'relative',
-                zIndex: 10
-            }}>
-                <div style={{
-                    width: 72,
-                    height: 72,
-                    margin: '0 auto 24px',
-                    borderRadius: 18,
-                    overflow: 'hidden',
-                    boxShadow: '0 0 30px rgba(171, 159, 242, 0.15)',
-                    border: '1px solid rgba(255,255,255,0.1)'
-                }}>
-                    <img src="/logo.png" alt="Dividends Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-
-                <h1 style={{
-                    fontSize: 28,
-                    fontWeight: 800,
-                    marginBottom: 8,
-                    letterSpacing: '-0.02em',
-                    color: '#fff'
-                }}>
-                    DIVIDENDS
-                </h1>
-
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    marginBottom: 32,
-                    fontSize: 12,
-                    color: 'var(--text-muted)',
-                    letterSpacing: '0.1em',
-                    textTransform: 'uppercase'
-                }}>
-                    <span style={{ width: 6, height: 6, background: '#3bffb0', borderRadius: '50%', boxShadow: '0 0 8px #3bffb0' }}></span>
-                    System Online
-                </div>
-
-                <p style={{ color: 'var(--text-secondary)', marginBottom: 32, fontSize: 15, lineHeight: 1.6 }}>
-                    Welcome to the arena.<br />Connect your wallet to resume operations.
-                </p>
-
-                <button
-                    className={`btn-action-primary ${loginPhase === 'connecting' ? 'btn-pulse' : ''}`}
-                    style={{
-                        width: '100%',
-                        padding: '16px',
-                        fontSize: 16,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 12,
-                        marginBottom: 20,
-                        opacity: loginPhase === 'connecting' ? 0.9 : 1,
-                        cursor: loginPhase === 'connecting' ? 'wait' : 'pointer',
-                        background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)',
-                        color: '#000',
-                        border: 'none',
-                        boxShadow: '0 4px 20px rgba(255,255,255,0.15)',
-                        transition: 'transform 0.1s, box-shadow 0.1s'
-                    }}
-                    onClick={connectPhantom}
-                    disabled={loginPhase !== 'idle'}
-                >
-                    <span style={{ fontSize: 20 }}>👻</span>
-                    {loginPhase === 'connecting' ? 'Verifying Signature...' : 'Connect Phantom'}
-                </button>
-
-                {walletError && (
-                    <div style={{
-                        color: '#ff4d4d',
-                        fontSize: 13,
-                        padding: 12,
-                        background: 'rgba(255, 77, 77, 0.08)',
-                        borderRadius: 8,
-                        border: '1px solid rgba(255, 77, 77, 0.15)',
-                        marginBottom: 16
-                    }}>
-                        {walletError}
-                        {!window.solana && (
-                            <a href="https://phantom.app/" target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 4, color: '#fff', textDecoration: 'underline' }}>
-                                Install Phantom Wallet
-                            </a>
-                        )}
+            <div className="login-card-container">
+                <div className="login-card-content">
+                    <div className="login-logo-wrapper">
+                        <img src="/logo.png" alt="Dividends Logo" className="login-logo-img" />
                     </div>
-                )}
 
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.05em' }}>
-                    SECURE AUTHENTICATION • SOLANA NETWORK
+                    <div className="login-status-pill">
+                        <div className="status-dot"></div>
+                        <span>Reclaim Protocol Active</span>
+                    </div>
+
+                    <h1 className="login-title">
+                        DIVIDENDS
+                    </h1>
+
+                    <p className="login-subtitle">
+                        The arena awaits.<br />Connect your wallet to resume operations.
+                    </p>
+
+                    <button
+                        className="login-connect-btn"
+                        onClick={connectPhantom}
+                        disabled={loginPhase !== 'idle'}
+                    >
+                        {loginPhase === 'connecting' ? (
+                            <>
+                                <span className="btn-icon-phantom">⏳</span>
+                                <span>Verifying...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="btn-icon-phantom">👻</span>
+                                <span>Connect Phantom</span>
+                            </>
+                        )}
+                    </button>
+
+                    {walletError && (
+                        <div className="login-error-box">
+                            {walletError}
+                            {!window.solana && (
+                                <a href="https://phantom.app/" target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 8, color: '#fff', textDecoration: 'underline' }}>
+                                    Install Phantom Wallet
+                                </a>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
-
 }

@@ -442,5 +442,80 @@ export async function getTokenStats(mint) {
         mood: getEcosystemMood().mood
     };
 }
-export async function getTokenFees(mint) { return { totalFees: 0, claimable: 0 }; }
-export async function getTopHolders(mint) { return getLeaderboard().topHolders; }
+export async function getTokenFees(mint) {
+    try {
+        console.log("[BagsService] 1. Fetching Fees from API2...");
+
+        // 1. Fetch Fees (Lamports) from Hidden Endpoint
+        const res = await fetch(`https://api2.bags.fm/api/v1/token-launch/lifetime-fees?tokenMint=${mint}`, {
+            timeout: 8000
+        });
+
+        if (!res.ok) throw new Error(`Fee Endpoint Error: ${res.status}`);
+
+        const data = await res.json();
+
+        if (data.success && data.response) {
+            const lamports = Number(data.response);
+            const sol = lamports / 1000000000;
+
+            console.log(`[BagsService] 2. Raw Fees Found: ${sol} SOL. Fetching Price...`);
+
+            // 2. Fetch Exact Price (Bags Source) for Parity
+            let solPrice = 0;
+            try {
+                const priceRes = await fetch('https://api2.bags.fm/api/v1/solana/latestPrice?token=So11111111111111111111111111111111111111112', { timeout: 3000 });
+                const priceData = await priceRes.json();
+                if (priceData && priceData.info && priceData.info.price) {
+                    solPrice = Number(priceData.info.price);
+                    console.log(`[BagsService] Price (API2): $${solPrice}`);
+                }
+            } catch (e) {
+                console.warn("[BagsService] Price API2 failed, trying fallback...");
+            }
+
+            // Fallback price
+            if (!solPrice) {
+                const mkt = await marketService.fetchTokenData('So11111111111111111111111111111111111111112');
+                solPrice = mkt?.price || 180;
+                console.log(`[BagsService] Price (Market/Default): $${solPrice}`);
+            }
+
+            const totalUSD = sol * solPrice;
+            console.log(`[BagsService] FINAL CALC: $${totalUSD.toFixed(2)}`);
+
+            return {
+                totalFees: totalUSD,
+                claimable: 0,
+                currency: 'USD',
+                rawSol: sol,
+                solPrice
+            };
+        }
+
+        throw new Error("Invalid API2 JSON structure");
+    } catch (e) {
+        console.error("___________________________________________________");
+        console.error("[BagsService] CRITICAL FAILURE IN FEES FETCH");
+        console.error("ERROR:", e.message);
+        console.error("FALLING BACK TO 1% VOLUME ESTIMATE");
+        console.error("___________________________________________________");
+
+        // Fallback to estimation
+        const stats = await getTokenStats(mint);
+        if (stats && stats.volume24h) {
+            return {
+                totalFees: stats.volume24h * 0.01,
+                claimable: 0,
+                isEstimate: true
+            };
+        }
+        return { totalFees: 0, claimable: 0 };
+    }
+}
+
+
+export async function getTopHolders(mint) {
+    const lb = await getLeaderboard();
+    return lb.topHolders;
+}

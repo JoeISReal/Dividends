@@ -29,8 +29,8 @@ export function useSystemState() {
 
         // Velocity Search
         const velocitySignal = signals.find(s =>
-            (s.type === 'success' && s.message.includes('Yield velocity rising')) ||
-            (s.type === 'warning' && s.message.includes('Yield velocity decelerating'))
+            (s.type === 'success' && s.message?.includes('Yield velocity rising')) ||
+            (s.type === 'warning' && s.message?.includes('Yield velocity decelerating'))
         );
 
         if (velocitySignal) {
@@ -51,9 +51,9 @@ export function useSystemState() {
         // Risk Search
         // Signals: "Critical instability", "Risk pressure elevated", "System stabilized"
         const riskSignal = signals.find(s =>
-            s.message.includes('Critical instability') ||
-            s.message.includes('Risk pressure elevated') ||
-            s.message.includes('System stabilized')
+            s.message?.includes('Critical instability') ||
+            s.message?.includes('Risk pressure elevated') ||
+            s.message?.includes('System stabilized')
         );
 
         if (riskSignal) {
@@ -64,12 +64,12 @@ export function useSystemState() {
             // Let's assume LOW if > 60s and no recent updates, but relying on "System stabilized" is safer if engine guarantees it.
             // DirectiveEngine emits "System stabilized" when dropping from high/crit.
 
-            if (riskSignal.message.includes('Critical instability')) {
+            if (riskSignal.message?.includes('Critical instability')) {
                 risk = { status: 'CRITICAL', label: 'CRITICAL', color: 'var(--accent-red)', bars: 5 };
                 isLocked = true;
-            } else if (riskSignal.message.includes('Risk pressure elevated')) {
+            } else if (riskSignal.message?.includes('Risk pressure elevated')) {
                 risk = { status: 'ELEVATED', label: 'ELEVATED', color: 'var(--accent-orange)', bars: 3 };
-            } else if (riskSignal.message.includes('System stabilized')) {
+            } else if (riskSignal.message?.includes('System stabilized')) {
                 risk = { status: 'LOW', label: 'LOW', color: 'var(--accent-green)', bars: 1 };
             }
         }
@@ -77,12 +77,12 @@ export function useSystemState() {
         // Automation Search
         // Signals: "Automation gap detected", "Automation online"
         const autoSignal = signals.find(s =>
-            s.message.includes('Automation gap detected') ||
-            s.message.includes('Automation online')
+            s.message?.includes('Automation gap detected') ||
+            s.message?.includes('Automation online')
         );
 
         if (autoSignal) {
-            if (autoSignal.message.includes('Automation gap detected')) {
+            if (autoSignal.message?.includes('Automation gap detected')) {
                 automation = { status: 'OFFLINE', label: 'GAP DETECTED', color: 'var(--accent-orange)' };
             } else {
                 automation = { status: 'ONLINE', label: 'ONLINE', color: 'var(--accent-green)' };

@@ -1,61 +1,64 @@
 export const HOLDER_TIERS = {
-    OBSERVER: {
-        id: 'observer',
-        name: 'Observer',
+    SHRIMP: {
+        id: 'shrimp',
+        name: 'Shrimp',
         threshold: 0,
-        color: '#a0a0a0', // Grey
-        icon: '👁️',
-        className: 'tier-observer'
+        color: '#94a3b8', // Slate 400
+        icon: '🦐',
+        className: 'tier-shrimp'
     },
-    HOLDER: {
-        id: 'holder',
-        name: 'Holder',
-        threshold: 1000,
-        color: '#4caf50', // Green
-        icon: '🥬',
-        className: 'tier-holder'
-    },
-    CONTRIBUTOR: {
-        id: 'contributor',
-        name: 'Contributor',
+    CRAB: {
+        id: 'crab',
+        name: 'Crab',
         threshold: 10000,
-        color: '#2196f3', // Blue
-        icon: '💎',
-        className: 'tier-contributor'
+        color: '#f87171', // Red 400
+        icon: '🦀',
+        className: 'tier-crab'
     },
-    WHALE: {
-        id: 'whale',
-        name: 'Whale',
-        threshold: 100000, // 100k
-        color: '#9c27b0', // Purple
-        icon: '🐋',
-        className: 'tier-whale'
+    DOLPHIN: {
+        id: 'dolphin',
+        name: 'Dolphin',
+        threshold: 50000,
+        color: '#60a5fa', // Blue 400
+        icon: '🐬',
+        className: 'tier-dolphin'
     },
     SHARK: {
         id: 'shark',
         name: 'Shark',
-        threshold: 250000, // 250k (New Tier)
-        color: '#ff4c4c', // Red/Coral
+        threshold: 100000,
+        color: '#facc15', // Yellow 400
         icon: '🦈',
         className: 'tier-shark'
     },
-    INNER_CIRCLE: {
-        id: 'inner_circle',
-        name: 'Inner Circle',
-        threshold: 1000000, // 1M
-        color: '#ffd700', // Gold
-        icon: '👑',
-        className: 'tier-inner-circle'
+    ORCA: {
+        id: 'orca',
+        name: 'Orca',
+        threshold: 500000,
+        color: '#1e293b', // Slate 800 (Dark) or maybe a sleek Black/White? Let's go with B&W Tuxedo Look
+        // Actually Orcas are killer whales. Let's give them a distinct Teal or Deep Blue
+        color: '#2dd4bf', // Teal 400
+        icon: '🐋',
+        className: 'tier-orca'
     },
-    AUTHORITY: {
-        id: 'authority',
-        name: 'Authority',
-        threshold: 10000000, // 10M (1%)
-        color: '#00dc82', // Neon Green
-        icon: '🪐',
-        className: 'tier-authority'
+    WHALE: {
+        id: 'whale',
+        name: 'Whale',
+        threshold: 1000000,
+        color: '#a855f7', // Purple 500
+        icon: '🌊',
+        className: 'tier-whale'
+    },
+    KRAKEN: {
+        id: 'kraken',
+        name: 'Kraken',
+        threshold: 10000000,
+        color: '#f5c77a', // Gold
+        icon: '🦑',
+        className: 'tier-kraken'
     }
 };
+
 export const getTier = (balance) => {
     // Sort tiers by threshold (descending) to find the highest match
     const tiers = Object.values(HOLDER_TIERS).sort((a, b) => b.threshold - a.threshold);
@@ -64,7 +67,7 @@ export const getTier = (balance) => {
             return tier;
         }
     }
-    return HOLDER_TIERS.OBSERVER;
+    return HOLDER_TIERS.SHRIMP;
 };
 
 /**
