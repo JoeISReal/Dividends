@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Connection, PublicKey } from '@solana/web3.js';
 import { TierBadge } from './TierBadge';
 
 const RPC_ENDPOINTS = [
@@ -44,25 +43,44 @@ export default function CommunityGravity() {
         };
 
         const rescueFetch = async () => {
-            // Fallback to public RPCs loop
+            // Fallback to public RPCs loop (Raw Fetch to avoid web3.js Polyfill issues)
             const MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
+
+            // Raw JSON RPC Payload
+            const payload = {
+                jsonrpc: "2.0",
+                id: 1,
+                method: "getTokenLargestAccounts",
+                params: [
+                    MINT,
+                    { commitment: "confirmed" }
+                ]
+            };
 
             for (const rpc of RPC_ENDPOINTS) {
                 try {
-                    console.log("Attempting rescue via:", rpc);
-                    const conn = new Connection(rpc, 'confirmed');
+                    console.log("Attempting rescue via (RAW):", rpc);
 
-                    // Light call: Top 20 holders
-                    const largest = await conn.getTokenLargestAccounts(new PublicKey(MINT));
-                    const accounts = largest.value || [];
+                    const response = await fetch(rpc, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+
+                    const json = await response.json();
+                    if (json.error) throw new Error(`RPC Error: ${json.error.message}`);
+
+                    const accounts = json.result?.value || [];
 
                     if (accounts.length === 0) throw new Error("Empty accounts list");
 
-                    const mapped = accounts.map((a, i) => ({
+                    const mapped = accounts.slice(0, 50).map((a, i) => ({
                         rank: i + 1,
                         // Use Address as display since we don't have Owner map here yet
-                        wallet: a.address.toString(),
-                        displayWallet: (a.address.toString()).slice(0, 4) + '...' + (a.address.toString()).slice(-4),
+                        wallet: a.address,
+                        displayWallet: (a.address).slice(0, 4) + '...' + (a.address).slice(-4),
                         balance: a.uiAmount,
                         isRescue: true
                     }));
