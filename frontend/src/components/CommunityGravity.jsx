@@ -12,6 +12,7 @@ export default function CommunityGravity() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        console.log("CommunityGravity: Mounting v1.2 (Raw Fetch Rescue Active)");
         let mounted = true;
 
         const fetchHolders = async () => {
