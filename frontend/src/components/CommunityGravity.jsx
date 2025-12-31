@@ -12,13 +12,13 @@ export default function CommunityGravity() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        console.log("CommunityGravity: Mounting v1.2 (Raw Fetch Rescue Active)");
+        console.log("CommunityGravity: Mounting v1.3 (Lifeboat Active)");
         let mounted = true;
 
         const fetchHolders = async () => {
             try {
-                // 1. Try Backend API first
-                const res = await fetch('/api/bags/token/top-holders');
+                // 1. Try Backend API (Lifeboat)
+                const res = await fetch('/api/holders');
 
                 let data = null;
                 if (res.ok) {

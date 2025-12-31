@@ -1,8 +1,16 @@
 {
     "rewrites": [
         {
+            "source": "/api/holders",
+            "destination": "/api/holders"
+        },
+        {
+            "source": "/api/test",
+            "destination": "/api/test"
+        },
+        {
             "source": "/api/(.*)",
-            "destination": "https://dividends-backend.onrender.com/api/$1"
+            "destination": "/api/index.js"
         },
         {
             "source": "/(.*)",
