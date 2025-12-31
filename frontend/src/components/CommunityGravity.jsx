@@ -17,26 +17,12 @@ export default function CommunityGravity() {
 
                 if (mounted && Array.isArray(data)) {
                     // Map API data to UI structure
-                    // Expected data: { address: '...', balance: 123, ... }
-                    // If backend returns simple list, adapt here.
-                    // Assuming Service returns array of objects.
                     const mapped = data.map((h, i) => {
-                        // Backend uses 'balanceApprox'
                         const bal = h.balanceApprox || 0;
-                        let displayTier = 'SHRIMP';
-
-                        if (bal >= 10000000) displayTier = 'KRAKEN';
-                        else if (bal >= 1000000) displayTier = 'WHALE';
-                        else if (bal >= 500000) displayTier = 'ORCA';
-                        else if (bal >= 100000) displayTier = 'SHARK';
-                        else if (bal >= 50000) displayTier = 'DOLPHIN';
-                        else if (bal >= 10000) displayTier = 'CRAB';
-
                         return {
                             rank: i + 1,
                             wallet: h.wallet || `???`,
                             displayWallet: (h.wallet || '').slice(0, 4) + '...' + (h.wallet || '').slice(-4),
-                            tier: displayTier,
                             balance: bal
                         };
                     });
@@ -44,13 +30,12 @@ export default function CommunityGravity() {
                 }
             } catch (e) {
                 console.error("CommunityGravity Load Error:", e);
-                // Fallback to static mock if fetch fails, but STABLE this time
+                // Fallback to static mock if fetch fails
                 if (mounted) {
                     setHolders(Array.from({ length: 10 }, (_, i) => ({
                         rank: i + 1,
                         displayWallet: `MOCK...${i}X`,
-                        tier: 'MEMBER',
-                        balance: 0
+                        balance: 10000000 / Math.pow(2, i) // Descending mock balances for diverse tiers
                     })));
                 }
             } finally {
