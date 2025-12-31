@@ -3,7 +3,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { calculateIncome } from '../game/incomeEngineFixed';
-import { getPerksForLevel } from '../game/perksRegistry';
 import { resilientFetch } from '../api/http';
 import { STREAMS } from '../data/GameData';
 import { directiveEngine } from '../game/directiveEngine';

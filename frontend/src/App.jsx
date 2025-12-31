@@ -15,7 +15,6 @@ import LeaderboardTab from './components/LeaderboardTab';
 import NotificationToast from './components/NotificationToast';
 import LoginPage from './pages/LoginPage';
 import DegenArenaPage from './pages/DegenArenaPage';
-import TradeHistoryPage from './pages/TradeHistoryPage';
 import DashboardTab from './components/DashboardTab';
 import PrestigeTab from './components/PrestigeTab';
 import { soundManager } from './game/SoundManager';
@@ -102,8 +101,6 @@ export default function App() {
   }
 
   let centerContent;
-  let liveDegens = [];
-
   // Create a sorted list for display (Cheapest -> Most Expensive)
   const SORTED_STREAMS = [...STREAMS].sort((a, b) => a.baseCost - b.baseCost);
 
