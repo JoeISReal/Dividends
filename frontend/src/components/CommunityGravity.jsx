@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { TierBadge } from './TierBadge';
-import { PublicKey } from '@solana/web3.js';
+import { TierBadge } from './TierBadge';
 
 
 export default function CommunityGravity() {
@@ -17,6 +17,29 @@ export default function CommunityGravity() {
             "https://rpc.ankr.com/solana",
             "https://api.mainnet-beta.solana.com"
         ];
+
+        // Lightweight Base58 Encoder to avoid 'Buffer' polyfill issues with web3.js
+        const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+        function toBase58(buffer) {
+            if (buffer.length === 0) return '';
+            let i, j, digits = [0];
+            for (i = 0; i < buffer.length; i++) {
+                for (j = 0; j < digits.length; j++) digits[j] <<= 8;
+                digits[0] += buffer[i];
+                let carry = 0;
+                for (j = 0; j < digits.length; ++j) {
+                    digits[j] += carry;
+                    carry = (digits[j] / 58) | 0;
+                    digits[j] %= 58;
+                }
+                while (carry) {
+                    digits.push(carry % 58);
+                    carry = (carry / 58) | 0;
+                }
+            }
+            for (i = 0; buffer[i] === 0 && i < buffer.length - 1; i++) digits.push(0);
+            return digits.reverse().map(d => ALPHABET[d]).join('');
+        }
 
         // Also check environment variable for overrides
         const envRpc = import.meta.env.VITE_PRIVATE_RPC_URL;
@@ -90,9 +113,11 @@ export default function CommunityGravity() {
                                 }
                                 // Owner is offset 32-64 in SPL Token Layout
                                 const ownerBytes = bytes.slice(32, 64);
-                                const ownerKey = new PublicKey(ownerBytes);
+                                // Use native Base58 encoder
+                                const ownerAddress = toBase58(ownerBytes);
+
                                 // Map the Token Account Address -> Owner Address
-                                ownerMap[accountPubkeys[idx]] = ownerKey.toBase58();
+                                ownerMap[accountPubkeys[idx]] = ownerAddress;
                             } catch (e) {
                                 console.warn("Parse error for idx " + idx, e);
                             }
