@@ -66,7 +66,7 @@ export default function EcosystemOverview() {
     }, []);
 
     const metrics = [
-        { label: 'FEES COLLECTED', value: stats.fees },
+        { label: 'CURRENT VALUE', value: stats.fees },
         { label: 'ACTIVE HOLDERS', value: stats.holders },
     ];
 
