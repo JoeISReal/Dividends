@@ -239,7 +239,9 @@ export default function CommunityGravity() {
             }}>
 
                 <span className="text-label">GRAVITY WELL</span>
-                <span className="text-label" style={{ fontSize: '10px', opacity: 0.5 }}>TOP 100</span>
+                <span className="text-label" style={{ fontSize: '10px', opacity: 0.5 }}>
+                    {holders.length > 20 ? "TOP 100" : "TOP 20"}
+                </span>
             </div>
 
             <div className="surface-secondary" style={{
