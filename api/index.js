@@ -15,7 +15,7 @@ import { Connection, PublicKey } from '@solana/web3.js'; // Added
 import { Economy } from './_src/modules/Economy.js';
 import { STREAMS, UPGRADES } from './_src/data/GameData.js';
 import { EventSystem } from './_src/modules/Events.js';
-
+import fetch from 'node-fetch';
 import { signSession } from './_src/services/authCookies.js';
 import { requireAuth } from './_src/middleware/requireAuth.js';
 import * as bagsService from './_src/services/bagsService.js';
@@ -752,6 +752,7 @@ app.get('/api/bags/trending', async (req, res) => {
 // --- V2.2 ECOSYSTEM PROXIES (Bypass Browser Blockers) ---
 
 app.get('/api/v1/fees', async (req, res) => {
+    console.log("[DEBUG] /api/v1/fees HIT");
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=60');
     try {
         const MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
@@ -808,6 +809,7 @@ app.get('/api/v1/fees', async (req, res) => {
 });
 
 app.get('/api/v1/holders', async (req, res) => {
+    console.log("[DEBUG] /api/v1/holders HIT");
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
 
     // Default to Snapshot (Safe Fallback)
