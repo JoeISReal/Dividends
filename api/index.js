@@ -10,7 +10,9 @@ import cookieParser from 'cookie-parser';
 import crypto from 'crypto';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb'; // Modified: Added ObjectId
+import { Connection, PublicKey } from '@solana/web3.js'; // Added
+import fetch from 'node-fetch'; // Added
 import { Economy } from './_src/modules/Economy.js';
 import { STREAMS, UPGRADES } from './_src/data/GameData.js';
 import { EventSystem } from './_src/modules/Events.js';
@@ -830,11 +832,12 @@ app.get('/api/v1/holders', async (req, res) => {
                 }
             } catch (e) { console.warn(`RPC ${rpc} failed:`, e); }
         }
-        res.status(502).json({ error: "RPCs Failed", formatted: "..." });
-    } catch (e) {
-        console.error("V1 Holders Error:", e);
-        res.status(500).json({ error: "Proxy Failed" });
     }
+        res.status(502).json({ error: "RPCs Failed", formatted: "..." });
+} catch (e) {
+    console.error("V1 Holders Error:", e);
+    res.status(500).json({ error: e.message || "Proxy Failed" });
+}
 });
 
 // --- BAGS FEATURE ROUTES ---

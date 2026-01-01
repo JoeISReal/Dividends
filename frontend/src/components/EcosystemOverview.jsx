@@ -28,7 +28,12 @@ export default function EcosystemOverview() {
                         setStats(prev => ({ ...prev, fees: feesData.formatted }));
                     }
                 } else {
-                    setStats(prev => ({ ...prev, fees: `ERR:${feesRes.status}` }));
+                    let errMsg = `ERR:${feesRes.status}`;
+                    try {
+                        const errJson = await feesRes.json();
+                        if (errJson.error) errMsg = `ERR:${errJson.error.substring(0, 10)}`;
+                    } catch (e) { }
+                    setStats(prev => ({ ...prev, fees: errMsg }));
                 }
 
                 if (holdersRes.ok) {
@@ -37,7 +42,12 @@ export default function EcosystemOverview() {
                         setStats(prev => ({ ...prev, holders: holdersData.formatted }));
                     }
                 } else {
-                    setStats(prev => ({ ...prev, holders: `ERR:${holdersRes.status}` }));
+                    let errMsg = `ERR:${holdersRes.status}`;
+                    try {
+                        const errJson = await holdersRes.json();
+                        if (errJson.error) errMsg = `ERR:${errJson.error.substring(0, 10)}`;
+                    } catch (e) { }
+                    setStats(prev => ({ ...prev, holders: errMsg }));
                 }
 
             } catch (e) {
