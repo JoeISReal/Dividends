@@ -1,4 +1,3 @@
-import fetch from 'node-fetch';
 import Snapshot from '../models/Snapshot.js';
 import * as bagsService from './bagsService.js';
 
