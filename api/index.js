@@ -12,7 +12,6 @@ import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { MongoClient, ObjectId } from 'mongodb'; // Modified: Added ObjectId
 import { Connection, PublicKey } from '@solana/web3.js'; // Added
-import fetch from 'node-fetch'; // Added
 import { Economy } from './_src/modules/Economy.js';
 import { STREAMS, UPGRADES } from './_src/data/GameData.js';
 import { EventSystem } from './_src/modules/Events.js';
