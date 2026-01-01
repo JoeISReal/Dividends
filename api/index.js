@@ -10,7 +10,27 @@ import cookieParser from 'cookie-parser';
 import crypto from 'crypto';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
-import { MongoClient, ObjectId } from 'mongodb'; // Modified: Added ObjectId
+import mongoose from 'mongoose'; // Added
+
+// ...
+
+// MongoDB Configuration
+const uri = process.env.MONGO_URI;
+
+if (!uri) {
+    // ... error handling ...
+}
+
+// 1. Native Client (Legacy)
+const client = uri ? new MongoClient(uri) : null;
+let db;
+
+// 2. Mongoose (New Snapshot Service)
+if (uri) {
+    mongoose.connect(uri)
+        .then(() => console.log("Mongoose Connected"))
+        .catch(e => console.error("Mongoose Error:", e));
+}
 import { Connection, PublicKey } from '@solana/web3.js'; // Added
 import { Economy } from './_src/modules/Economy.js';
 import { STREAMS, UPGRADES } from './_src/data/GameData.js';
