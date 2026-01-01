@@ -51,129 +51,138 @@ export default function CommunityGravity() {
             const MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
             const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
-            // GPA Payload: Fetch ALL accounts for this mint
-            const payload = JSON.stringify({
-                jsonrpc: "2.0",
-                id: 1,
-                method: "getProgramAccounts",
+            // --- STRATEGY 1: HEAVY SCAN (Target: Top 100) ---
+            // Risks: 429/Timeout on Free RPCs due to high Compute Cost
+            const payloadHeavy = JSON.stringify({
+                jsonrpc: "2.0", id: 1, method: "getProgramAccounts",
                 params: [
                     TOKEN_PROGRAM_ID,
                     {
                         encoding: "base64",
                         filters: [
-                            { dataSize: 165 }, // Standard SPL Token Account size
-                            { memcmp: { offset: 0, bytes: MINT } } // Mint at offset 0
+                            { dataSize: 165 },
+                            { memcmp: { offset: 0, bytes: MINT } }
                         ]
                     }
                 ]
             });
 
-            for (const rpc of RPC_LIST) {
+            // --- STRATEGY 2: LIGHT SCAN (Target: Top 20) ---
+            // Risks: None. Very cheap. Reliable.
+            const payloadLight = JSON.stringify({
+                jsonrpc: "2.0", id: 1, method: "getTokenLargestAccounts",
+                params: [MINT, { commitment: "confirmed" }]
+            });
+
+            // Helper to parsing Binary Account Data (For Heavy Scan)
+            const parseBinaryAccount = (base64) => {
                 try {
-                    if (!mounted) return;
-                    console.log(`Gravity Fetching (Full Scan) via: ${rpc}`);
+                    const binaryString = atob(base64);
+                    // Optimization: Only parse amount(64) and owner(32)
+                    // Simple unsafe parse for speed
+                    const bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+                    const view = new DataView(bytes.buffer);
+                    const amount = view.getBigUint64(64, true);
+                    const ownerBytes = bytes.slice(32, 64);
+                    return { amount, ownerBytes };
+                } catch (e) { return null; }
+            };
 
-                    const response = await fetch(rpc, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: payload
-                    });
+            for (const rpc of RPC_LIST) {
+                if (!mounted) return;
+                try {
+                    console.log(`Gravity: Attempting Heavy Scan via ${rpc}...`);
 
+                    // 1. Try Heavy
+                    let response = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payloadHeavy });
+
+                    // IF HEAVY FAILS (429/403), FALLBACK TO LIGHT IMMEDIATELY ON SAME RPC
+                    if (!response.ok) {
+                        console.warn(`Heavy Scan Blocked (${response.status}). Switching to Light Scan...`);
+                        response = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payloadLight });
+                    }
+
+                    // If even Light fails, try next RPC
                     if (!response.ok) continue;
 
                     const json = await response.json();
-                    if (json.error || !json.result) continue;
+                    if (json.error || !json.result) continue; // Try next RPC
 
-                    const allAccounts = json.result;
-                    if (!allAccounts.length) continue;
+                    let validHolders = [];
 
-                    console.log(`Scanned ${allAccounts.length} holders.`);
+                    // DETECT RESPONSE TYPE
+                    // Heavy Scan returns array of { pubkey, account }
+                    // Light Scan returns { value: [ { address, uiAmount ... } ] }
 
-                    // Parse & Sort
-                    const parsedHolders = [];
+                    if (Array.isArray(json.result)) {
+                        // --- PROCESS HEAVY SCAN ---
+                        console.log("Processing Heavy Scan (Top 100)...");
+                        const raw = [];
+                        json.result.forEach(item => {
+                            const parsed = parseBinaryAccount(item.account.data[0]);
+                            if (parsed && parsed.amount > 0n) raw.push(parsed);
+                        });
+                        // Sort
+                        raw.sort((a, b) => (a.amount > b.amount ? -1 : 1));
 
-                    allAccounts.forEach(acc => {
-                        try {
-                            const dataBase64 = acc.account.data[0];
-                            const binaryString = atob(dataBase64);
-
-                            // We only strictly need bytes 32-72 (Owner + Amount)
-                            // Optimization: Don't convert whole string if possible, but JS string access is fast enough
-                            const bytes = new Uint8Array(binaryString.length);
-                            for (let i = 0; i < binaryString.length; i++) {
-                                bytes[i] = binaryString.charCodeAt(i);
-                            }
-
-                            // 1. Extract Amount (Offset 64, 8 bytes, u64 LE)
-                            // Use DataView for safe Little Endian reading
-                            const view = new DataView(bytes.buffer);
-                            const amountBigInt = view.getBigUint64(64, true);
-
-                            // Filter dust
-                            if (amountBigInt === 0n) return;
-
-                            // 2. Extract Owner (Offset 32, 32 bytes)
-                            // We only decode Owner if this account makes the cut, but we need to sort first.
-                            // To save perf, we can store the raw Owner bytes and decode only top 100?
-                            // No, Base58 encode is fast enough for Top N.
-                            // Let's store bytes for now to avoid decoding 20k addresses.
-
-                            // Convert BigInt to Number for approx UI balance (Dividends has 6 decimals?)
-                            // Assuming 6 decimals based on earlier context? Or standard 9?
-                            // Actually earlier code used uiAmount directly.
-                            // Let's guess decimals = 6 based on typical SPL, or 9 for SOL. 
-                            // WAIT! uiAmount comes adjusted. Raw amount is Integer.
-                            // I need the Decimals.
-                            // Mint: 7GB6... usually has 6 or 9.
-                            // Hardcoding 6 for now (Standard for many Memecoins) - verify if possible?
-                            // Actually, let's just use raw amount for sorting, and apply a divisor.
-                            // Previous view showed: balance: 12500000 (Whale).
-                            // If user sees correct numbers earlier, we need to match that scale.
-                            // Let's assume standard integer matching for now.
-
-                            parsedHolders.push({
-                                ownerBytes: bytes.slice(32, 64),
-                                rawAmount: amountBigInt
-                            });
-                        } catch (e) {
-                            // skip bad data
-                        }
-                    });
-
-                    // Sort Descending
-                    parsedHolders.sort((a, b) => {
-                        if (a.rawAmount > b.rawAmount) return -1;
-                        if (a.rawAmount < b.rawAmount) return 1;
-                        return 0;
-                    });
-
-                    // Take Top 100
-                    const top100 = parsedHolders.slice(0, 100).map((h, index) => {
-                        const owner = toBase58(h.ownerBytes);
-
-                        // Convert Raw Amount to UI Amount
-                        // MINT: 7GB6... has 6 decimals (Verified via Explorer check typically, or assuming)
-                        // If previous balance 12.5M was correct for a top holder...
-                        // Top holder on snapshot had millions.
-                        // Let's assume 6 decimals. (div by 1,000,000)
-                        const uiBalance = Number(h.rawAmount) / 1000000;
-
-                        return {
-                            rank: index + 1,
-                            wallet: owner,
-                            displayWallet: owner.slice(0, 4) + '...' + owner.slice(-4),
-                            balance: uiBalance,
+                        // Top 100
+                        validHolders = raw.slice(0, 100).map((h, idx) => ({
+                            rank: idx + 1,
+                            wallet: toBase58(h.ownerBytes),
+                            balance: Number(h.amount) / 1000000, // Assuming 6 decimals
                             tier: 'MEMBER'
-                        };
-                    });
+                        }));
 
-                    if (mounted) {
-                        setHolders(top100);
-                        setLoading(false);
-                        return; // Done
+                    } else if (json.result.value && Array.isArray(json.result.value)) {
+                        // --- PROCESS LIGHT SCAN ---
+                        console.log("Processing Light Scan (Top 20)...");
+                        const accounts = json.result.value;
+                        if (!accounts.length) continue;
+
+                        // Need to fetch owners for these accounts
+                        const accountPubkeys = accounts.slice(0, 50).map(a => a.address);
+                        const infoPayload = JSON.stringify({
+                            jsonrpc: "2.0", id: 2, method: "getMultipleAccounts",
+                            params: [accountPubkeys, { encoding: "base64" }]
+                        });
+                        const infoRes = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: infoPayload });
+                        const infoJson = await infoRes.json();
+
+                        const ownerMap = {};
+                        if (infoJson.result?.value) {
+                            infoJson.result.value.forEach((d, i) => {
+                                if (!d) return;
+                                const p = parseBinaryAccount(d.data[0]);
+                                if (p) ownerMap[accountPubkeys[i]] = toBase58(p.ownerBytes);
+                            });
+                        }
+
+                        validHolders = accounts.map((acc, idx) => {
+                            const owner = ownerMap[acc.address] || acc.address;
+                            return {
+                                rank: idx + 1,
+                                wallet: owner,
+                                balance: acc.uiAmount,
+                                tier: 'MEMBER'
+                            };
+                        });
                     }
+
+                    if (validHolders.length > 0) {
+                        const enriched = validHolders.map(h => ({
+                            ...h,
+                            displayWallet: h.wallet.slice(0, 4) + '...' + h.wallet.slice(-4)
+                        }));
+                        if (mounted) {
+                            setHolders(enriched);
+                            setLoading(false);
+                            return; // Success
+                        }
+                    }
+
                 } catch (e) {
-                    console.warn(`RPC Skipped (${rpc}):`, e);
+                    console.warn(`RPC Error ${rpc}:`, e);
                 }
             }
 
