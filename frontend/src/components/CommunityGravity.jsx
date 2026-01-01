@@ -52,7 +52,8 @@ export default function CommunityGravity() {
             const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
             // --- STRATEGY 1: HEAVY SCAN (Target: Top 100) ---
-            // Risks: 429/Timeout on Free RPCs due to high Compute Cost
+            // Optimization: attributes 'dataSlice' to 72 bytes prevents fetching unused data (delegates etc)
+            // This reduces payload size by 60% and lowers RPC compute cost.
             const payloadHeavy = JSON.stringify({
                 jsonrpc: "2.0", id: 1, method: "getProgramAccounts",
                 params: [
@@ -62,24 +63,21 @@ export default function CommunityGravity() {
                         filters: [
                             { dataSize: 165 },
                             { memcmp: { offset: 0, bytes: MINT } }
-                        ]
+                        ],
+                        dataSlice: { offset: 0, length: 72 } // Only fetch Mint(0-32), Owner(32-64), Amount(64-72)
                     }
                 ]
             });
 
             // --- STRATEGY 2: LIGHT SCAN (Target: Top 20) ---
-            // Risks: None. Very cheap. Reliable.
             const payloadLight = JSON.stringify({
                 jsonrpc: "2.0", id: 1, method: "getTokenLargestAccounts",
                 params: [MINT, { commitment: "confirmed" }]
             });
 
-            // Helper to parsing Binary Account Data (For Heavy Scan)
             const parseBinaryAccount = (base64) => {
                 try {
                     const binaryString = atob(base64);
-                    // Optimization: Only parse amount(64) and owner(32)
-                    // Simple unsafe parse for speed
                     const bytes = new Uint8Array(binaryString.length);
                     for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
                     const view = new DataView(bytes.buffer);
@@ -89,102 +87,93 @@ export default function CommunityGravity() {
                 } catch (e) { return null; }
             };
 
+            // 1. Try HEAVY SCAN on ALL RPCs (Prioritize Top 100)
+            console.log("Gravity: Attempting Heavy Scan (Top 100)...");
             for (const rpc of RPC_LIST) {
                 if (!mounted) return;
                 try {
-                    console.log(`Gravity: Attempting Heavy Scan via ${rpc}...`);
+                    const res = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payloadHeavy });
+                    if (!res.ok) continue;
 
-                    // 1. Try Heavy
-                    let response = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payloadHeavy });
+                    const json = await res.json();
+                    if (!json.result || !Array.isArray(json.result)) continue;
 
-                    // IF HEAVY FAILS (429/403), FALLBACK TO LIGHT IMMEDIATELY ON SAME RPC
-                    if (!response.ok) {
-                        console.warn(`Heavy Scan Blocked (${response.status}). Switching to Light Scan...`);
-                        response = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payloadLight });
-                    }
+                    console.log(`Heavy Scan Success via ${rpc}`);
 
-                    // If even Light fails, try next RPC
-                    if (!response.ok) continue;
+                    const raw = [];
+                    json.result.forEach(item => {
+                        // With dataSlice, data is smaller but offsets (32, 64) are relative to the slice 
+                        // effectively preserving the layout structure for the first 72 bytes.
+                        const parsed = parseBinaryAccount(item.account.data[0]);
+                        if (parsed && parsed.amount > 0n) raw.push(parsed);
+                    });
 
-                    const json = await response.json();
-                    if (json.error || !json.result) continue; // Try next RPC
+                    raw.sort((a, b) => (a.amount > b.amount ? -1 : 1));
 
-                    let validHolders = [];
+                    const top100 = raw.slice(0, 100).map((h, idx) => ({
+                        rank: idx + 1,
+                        wallet: toBase58(h.ownerBytes),
+                        balance: Number(h.amount) / 1000000,
+                        tier: 'MEMBER'
+                    }));
 
-                    // DETECT RESPONSE TYPE
-                    // Heavy Scan returns array of { pubkey, account }
-                    // Light Scan returns { value: [ { address, uiAmount ... } ] }
-
-                    if (Array.isArray(json.result)) {
-                        // --- PROCESS HEAVY SCAN ---
-                        console.log("Processing Heavy Scan (Top 100)...");
-                        const raw = [];
-                        json.result.forEach(item => {
-                            const parsed = parseBinaryAccount(item.account.data[0]);
-                            if (parsed && parsed.amount > 0n) raw.push(parsed);
-                        });
-                        // Sort
-                        raw.sort((a, b) => (a.amount > b.amount ? -1 : 1));
-
-                        // Top 100
-                        validHolders = raw.slice(0, 100).map((h, idx) => ({
-                            rank: idx + 1,
-                            wallet: toBase58(h.ownerBytes),
-                            balance: Number(h.amount) / 1000000, // Assuming 6 decimals
-                            tier: 'MEMBER'
-                        }));
-
-                    } else if (json.result.value && Array.isArray(json.result.value)) {
-                        // --- PROCESS LIGHT SCAN ---
-                        console.log("Processing Light Scan (Top 20)...");
-                        const accounts = json.result.value;
-                        if (!accounts.length) continue;
-
-                        // Need to fetch owners for these accounts
-                        const accountPubkeys = accounts.slice(0, 50).map(a => a.address);
-                        const infoPayload = JSON.stringify({
-                            jsonrpc: "2.0", id: 2, method: "getMultipleAccounts",
-                            params: [accountPubkeys, { encoding: "base64" }]
-                        });
-                        const infoRes = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: infoPayload });
-                        const infoJson = await infoRes.json();
-
-                        const ownerMap = {};
-                        if (infoJson.result?.value) {
-                            infoJson.result.value.forEach((d, i) => {
-                                if (!d) return;
-                                const p = parseBinaryAccount(d.data[0]);
-                                if (p) ownerMap[accountPubkeys[i]] = toBase58(p.ownerBytes);
-                            });
-                        }
-
-                        validHolders = accounts.map((acc, idx) => {
-                            const owner = ownerMap[acc.address] || acc.address;
-                            return {
-                                rank: idx + 1,
-                                wallet: owner,
-                                balance: acc.uiAmount,
-                                tier: 'MEMBER'
-                            };
-                        });
-                    }
-
-                    if (validHolders.length > 0) {
-                        const enriched = validHolders.map(h => ({
+                    if (mounted) {
+                        const enriched = top100.map(h => ({
                             ...h,
                             displayWallet: h.wallet.slice(0, 4) + '...' + h.wallet.slice(-4)
                         }));
-                        if (mounted) {
-                            setHolders(enriched);
-                            setLoading(false);
-                            return; // Success
-                        }
+                        setHolders(enriched);
+                        setLoading(false);
+                        return; // Done!
+                    }
+                } catch (e) { console.warn("Heavy Scan Error", e); }
+            }
+
+            // 2. Fallback: LIGHT SCAN (Top 20) on Primary RPC only (Alchemy)
+            console.warn("Category 5 Warning: All Heavy Scans failed. Engaging Light Scan (Top 20) fallback.");
+            try {
+                const rpc = RPC_LIST[0]; // Use Premium
+                const res = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payloadLight });
+                const json = await res.json();
+
+                if (json.result && json.result.value) {
+                    const accounts = json.result.value;
+                    // Resolve owners logic reused...
+                    const accountPubkeys = accounts.slice(0, 50).map(a => a.address);
+                    const infoPayload = JSON.stringify({
+                        jsonrpc: "2.0", id: 2, method: "getMultipleAccounts",
+                        params: [accountPubkeys, { encoding: "base64" }]
+                    });
+                    const infoRes = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: infoPayload });
+                    const infoJson = await infoRes.json();
+
+                    const ownerMap = {};
+                    if (infoJson.result?.value) {
+                        infoJson.result.value.forEach((d, i) => {
+                            if (d) {
+                                const p = parseBinaryAccount(d.data[0]);
+                                if (p) ownerMap[accountPubkeys[i]] = toBase58(p.ownerBytes);
+                            }
+                        });
                     }
 
-                } catch (e) {
-                    console.warn(`RPC Error ${rpc}:`, e);
+                    const mapped = accounts.map((acc, idx) => ({
+                        rank: idx + 1,
+                        wallet: ownerMap[acc.address] || acc.address,
+                        balance: acc.uiAmount,
+                        tier: 'MEMBER'
+                    }));
+
+                    if (mounted) {
+                        const enriched = mapped.map(h => ({
+                            ...h,
+                            displayWallet: h.wallet.slice(0, 4) + '...' + h.wallet.slice(-4)
+                        }));
+                        setHolders(enriched);
+                        setLoading(false);
+                    }
                 }
-            }
+            } catch (e) { console.error("Critical Failure: Light Scan died too.", e); }
 
             // If we get here, all RPCs failed. 
             // Fallback to High-Fidelity Snapshot (Realistic Data) to prevent broken UI
