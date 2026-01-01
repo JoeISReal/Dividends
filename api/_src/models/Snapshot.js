@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const snapshotSchema = new mongoose.Schema({
     key: { type: String, required: true, unique: true }, // 'holders', 'fees', 'market'
@@ -6,4 +6,4 @@ const snapshotSchema = new mongoose.Schema({
     lastUpdated: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('Snapshot', snapshotSchema);
+export default mongoose.model('Snapshot', snapshotSchema);
