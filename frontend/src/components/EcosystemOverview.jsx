@@ -27,6 +27,8 @@ export default function EcosystemOverview() {
                     if (feesData.formatted) {
                         setStats(prev => ({ ...prev, fees: feesData.formatted }));
                     }
+                } else {
+                    setStats(prev => ({ ...prev, fees: `ERR:${feesRes.status}` }));
                 }
 
                 if (holdersRes.ok) {
@@ -34,10 +36,17 @@ export default function EcosystemOverview() {
                     if (holdersData.formatted) {
                         setStats(prev => ({ ...prev, holders: holdersData.formatted }));
                     }
+                } else {
+                    setStats(prev => ({ ...prev, holders: `ERR:${holdersRes.status}` }));
                 }
 
             } catch (e) {
                 console.error("Stats Fetch Error:", e);
+                setStats(prev => ({
+                    ...prev,
+                    fees: "ERR:FETCH",
+                    holders: "ERR:FETCH"
+                }));
             }
         };
 
