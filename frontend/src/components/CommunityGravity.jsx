@@ -87,52 +87,15 @@ export default function CommunityGravity() {
                 } catch (e) { return null; }
             };
 
-            // 1. Try HEAVY SCAN on ALL RPCs (Prioritize Top 100)
-            console.log("Gravity: Attempting Heavy Scan (Top 100)...");
-            for (const rpc of RPC_LIST) {
-                if (!mounted) return;
-                try {
-                    const res = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payloadHeavy });
-                    if (!res.ok) continue;
+            // INVERTED STRATEGY: Light Scan FIRST (Guaranteed Data), then Upgrade to Heavy (Top 100)
 
-                    const json = await res.json();
-                    if (!json.result || !Array.isArray(json.result)) continue;
+            // A. LIGHT SCAN (Top 20) - Fast & Cheap
+            console.log("Gravity: Starting Light Scan (Top 20)...");
+            let lightSuccess = false;
 
-                    console.log(`Heavy Scan Success via ${rpc}`);
-
-                    const raw = [];
-                    json.result.forEach(item => {
-                        // With dataSlice, data is smaller but offsets (32, 64) are relative to the slice 
-                        // effectively preserving the layout structure for the first 72 bytes.
-                        const parsed = parseBinaryAccount(item.account.data[0]);
-                        if (parsed && parsed.amount > 0n) raw.push(parsed);
-                    });
-
-                    raw.sort((a, b) => (a.amount > b.amount ? -1 : 1));
-
-                    const top100 = raw.slice(0, 100).map((h, idx) => ({
-                        rank: idx + 1,
-                        wallet: toBase58(h.ownerBytes),
-                        balance: Number(h.amount) / 1000000,
-                        tier: 'MEMBER'
-                    }));
-
-                    if (mounted) {
-                        const enriched = top100.map(h => ({
-                            ...h,
-                            displayWallet: h.wallet.slice(0, 4) + '...' + h.wallet.slice(-4)
-                        }));
-                        setHolders(enriched);
-                        setLoading(false);
-                        return; // Done!
-                    }
-                } catch (e) { console.warn("Heavy Scan Error", e); }
-            }
-
-            // 2. Fallback: LIGHT SCAN (Top 20) on Primary RPC only (Alchemy)
-            console.warn("Category 5 Warning: All Heavy Scans failed. Engaging Light Scan (Top 20) fallback.");
             try {
-                const rpc = RPC_LIST[0]; // Use Premium
+                // Try Primary RPC (Alchemy) first
+                const rpc = RPC_LIST[0];
                 const res = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payloadLight });
                 const json = await res.json();
 
@@ -144,6 +107,8 @@ export default function CommunityGravity() {
                         jsonrpc: "2.0", id: 2, method: "getMultipleAccounts",
                         params: [accountPubkeys, { encoding: "base64" }]
                     });
+
+                    // Optimization: Use same RPC for info fetch
                     const infoRes = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: infoPayload });
                     const infoJson = await infoRes.json();
 
@@ -165,15 +130,68 @@ export default function CommunityGravity() {
                     }));
 
                     if (mounted) {
+                        // Enrich for display
                         const enriched = mapped.map(h => ({
                             ...h,
                             displayWallet: h.wallet.slice(0, 4) + '...' + h.wallet.slice(-4)
                         }));
                         setHolders(enriched);
                         setLoading(false);
+                        lightSuccess = true;
+                        console.log("Light Scan Complete. UI updated with Top 20.");
                     }
                 }
-            } catch (e) { console.error("Critical Failure: Light Scan died too.", e); }
+            } catch (e) { console.error("Light Scan Failed:", e); }
+
+            // B. HEAVY SCAN (Top 100) - The "Upgrade"
+            // Only attempt if we haven't crashed completely, or even if Light succeeded (to show more data)
+            // We use a separate try/catch so it doesn't break the UI if it fails
+            if (mounted) {
+                console.log("Gravity: Attempting Heavy Scan Upgrade (Top 100)...");
+                // Try RPCs sequentially for the heavy lift
+                for (const rpc of RPC_LIST) {
+                    try {
+                        const res = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payloadHeavy });
+                        if (!res.ok) continue;
+
+                        const json = await res.json();
+                        if (!json.result || !Array.isArray(json.result)) continue;
+
+                        console.log(`Heavy Scan Upgrade Success via ${rpc}`);
+
+                        const raw = [];
+                        json.result.forEach(item => {
+                            const parsed = parseBinaryAccount(item.account.data[0]);
+                            if (parsed && parsed.amount > 0n) raw.push(parsed);
+                        });
+
+                        raw.sort((a, b) => (a.amount > b.amount ? -1 : 1));
+
+                        const top100 = raw.slice(0, 100).map((h, idx) => ({
+                            rank: idx + 1,
+                            wallet: toBase58(h.ownerBytes),
+                            balance: Number(h.amount) / 1000000,
+                            tier: 'MEMBER'
+                        }));
+
+                        if (mounted) {
+                            const enriched = top100.map(h => ({
+                                ...h,
+                                displayWallet: h.wallet.slice(0, 4) + '...' + h.wallet.slice(-4)
+                            }));
+                            setHolders(enriched); // Overwrite Top 20 with Top 100
+                            return; // Done
+                        }
+                    } catch (e) { console.warn("Heavy Scan Attempt Failed", e); }
+                }
+
+                if (!lightSuccess) {
+                    console.warn("Category 5: Both Light and Heavy scans failed.");
+                } else {
+                    console.log("Heavy Scan failed, keeping Light Scan results (Top 20).");
+                    return; // Keep light results
+                }
+            }
 
             // If we get here, all RPCs failed. 
             // Fallback to High-Fidelity Snapshot (Realistic Data) to prevent broken UI
