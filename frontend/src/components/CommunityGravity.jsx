@@ -12,7 +12,7 @@ export default function CommunityGravity() {
         let mounted = true;
 
         const RPC_LIST = [
-            "https://solana-mainnet.g.alchemy.com/v2/GOu50-6Y3sqi0q3AdLMFq0P60j2a-43s", // Alchemy Premium (High Priority)
+            "https://solana-mainnet.g.alchemy.com/v2/GOu50-6Y3sqi0q3AdLMFq", // Alchemy Premium (High Priority)
             "https://solana-mainnet.rpc.extrnode.com",
             "https://rpc.ankr.com/solana",
             "https://api.mainnet-beta.solana.com"
