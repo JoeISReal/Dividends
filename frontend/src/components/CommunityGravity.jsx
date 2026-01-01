@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { TierBadge } from './TierBadge';
+import { PublicKey } from '@solana/web3.js';
 
 
 export default function CommunityGravity() {
@@ -54,15 +55,61 @@ export default function CommunityGravity() {
                     const accounts = json.result.value;
                     if (!accounts.length) continue;
 
+                    // 2. Resolve Owners (Token Account -> Wallet Address)
+                    const accountPubkeys = accounts.slice(0, 50).map(a => a.address);
+
+                    // Batch fetch account info to get the 'owner' field
+                    const infoPayload = JSON.stringify({
+                        jsonrpc: "2.0",
+                        id: 2,
+                        method: "getMultipleAccounts",
+                        params: [
+                            accountPubkeys,
+                            { encoding: "base64" } // Need data to parse owner
+                        ]
+                    });
+
+                    const infoRes = await fetch(rpc, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: infoPayload
+                    });
+
+                    if (!infoRes.ok) continue;
+                    const infoJson = await infoRes.json();
+
+                    const ownerMap = {};
+                    if (infoJson.result && infoJson.result.value) {
+                        infoJson.result.value.forEach((accData, idx) => {
+                            if (!accData) return;
+                            try {
+                                const binaryString = atob(accData.data[0]);
+                                const bytes = new Uint8Array(binaryString.length);
+                                for (let i = 0; i < binaryString.length; i++) {
+                                    bytes[i] = binaryString.charCodeAt(i);
+                                }
+                                // Owner is offset 32-64 in SPL Token Layout
+                                const ownerBytes = bytes.slice(32, 64);
+                                const ownerKey = new PublicKey(ownerBytes);
+                                // Map the Token Account Address -> Owner Address
+                                ownerMap[accountPubkeys[idx]] = ownerKey.toBase58();
+                            } catch (e) {
+                                console.warn("Parse error for idx " + idx, e);
+                            }
+                        });
+                    }
+
                     // Success - Map and Set
-                    const mapped = accounts.slice(0, 50).map((acc, index) => ({
-                        rank: index + 1,
-                        // Address IS the wallet for this purpose
-                        wallet: acc.address,
-                        displayWallet: acc.address.slice(0, 4) + '...' + acc.address.slice(-4),
-                        balance: acc.uiAmount,
-                        tier: 'MEMBER' // Logic for tiers can be added here if needed
-                    }));
+                    const mapped = accounts.slice(0, 50).map((acc, index) => {
+                        const owner = ownerMap[acc.address] || acc.address; // Fallback to acc address if parse fails
+                        return {
+                            rank: index + 1,
+                            wallet: owner,
+                            displayWallet: owner.slice(0, 4) + '...' + owner.slice(-4),
+                            balance: acc.uiAmount,
+                            tier: 'MEMBER'
+                        };
+                    });
 
                     if (mounted) {
                         setHolders(mapped);
