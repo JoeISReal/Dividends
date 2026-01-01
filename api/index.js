@@ -10,27 +10,8 @@ import cookieParser from 'cookie-parser';
 import crypto from 'crypto';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
-import mongoose from 'mongoose'; // Added
-
-// ...
-
-// MongoDB Configuration
-const uri = process.env.MONGO_URI;
-
-if (!uri) {
-    // ... error handling ...
-}
-
-// 1. Native Client (Legacy)
-const client = uri ? new MongoClient(uri) : null;
-let db;
-
-// 2. Mongoose (New Snapshot Service)
-if (uri) {
-    mongoose.connect(uri)
-        .then(() => console.log("Mongoose Connected"))
-        .catch(e => console.error("Mongoose Error:", e));
-}
+import { MongoClient, ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
 import { Connection, PublicKey } from '@solana/web3.js'; // Added
 import { Economy } from './_src/modules/Economy.js';
 import { STREAMS, UPGRADES } from './_src/data/GameData.js';
@@ -91,6 +72,13 @@ if (!uri) {
 
 const client = uri ? new MongoClient(uri) : null;
 let db;
+
+// Mongoose Connection (Snapshot Service)
+if (uri) {
+    mongoose.connect(uri)
+        .then(() => console.log("Mongoose Connected"))
+        .catch(e => console.error("Mongoose Error:", e));
+}
 
 // Health Check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: Date.now() }));
