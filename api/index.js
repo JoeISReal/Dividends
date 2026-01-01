@@ -832,12 +832,12 @@ app.get('/api/v1/holders', async (req, res) => {
                 }
             } catch (e) { console.warn(`RPC ${rpc} failed:`, e); }
         }
-    }
+
         res.status(502).json({ error: "RPCs Failed", formatted: "..." });
-} catch (e) {
-    console.error("V1 Holders Error:", e);
-    res.status(500).json({ error: e.message || "Proxy Failed" });
-}
+    } catch (e) {
+        console.error("V1 Holders Error:", e);
+        res.status(500).json({ error: e.message || "Proxy Failed" });
+    }
 });
 
 // --- BAGS FEATURE ROUTES ---
