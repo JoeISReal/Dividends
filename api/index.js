@@ -747,6 +747,96 @@ app.get('/api/bags/trending', async (req, res) => {
     }
 });
 
+// --- V2.2 ECOSYSTEM PROXIES (Bypass Browser Blockers) ---
+
+app.get('/api/v1/fees', async (req, res) => {
+    // 60s Cache
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=60');
+    try {
+        const MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
+        const SOL_MINT = "So11111111111111111111111111111111111111112";
+
+        // 1. Fetch Fees (Bags API - Server Side)
+        const feesRes = await fetch(`https://api2.bags.fm/api/v1/token-launch/lifetime-fees?tokenMint=${MINT}`);
+        const feesData = await feesRes.json();
+
+        let solAmount = 0;
+        if (feesData.success && feesData.response) {
+            solAmount = Number(feesData.response) / 1000000000;
+        }
+
+        // 2. Fetch Price (Jupiter - Server Side)
+        let price = 180;
+        try {
+            const priceRes = await fetch(`https://api.jup.ag/price/v2?ids=${SOL_MINT}`);
+            const priceJson = await priceRes.json();
+            if (priceJson.data && priceJson.data[SOL_MINT]) {
+                price = Number(priceJson.data[SOL_MINT].price);
+            }
+        } catch (e) { console.warn("Price fetch failed", e); }
+
+        const totalUsd = solAmount * price;
+
+        res.json({
+            sol: solAmount,
+            price: price,
+            totalUsd: totalUsd,
+            formatted: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalUsd)
+        });
+    } catch (e) {
+        console.error("V1 Fees Error:", e);
+        res.status(500).json({ error: "Proxy Failed" });
+    }
+});
+
+app.get('/api/v1/holders', async (req, res) => {
+    // 5 Minute Cache (Prevent Alchemy 429)
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+    try {
+        const RPC_LIST = [
+            "https://solana-mainnet.g.alchemy.com/v2/GOu50-6Y3sqi0q3AdLMFq",
+            "https://solana-mainnet.rpc.extrnode.com"
+        ];
+
+        const payload = JSON.stringify({
+            jsonrpc: "2.0", id: 1,
+            method: "getProgramAccounts",
+            params: [
+                "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                {
+                    encoding: "base64",
+                    filters: [
+                        { dataSize: 165 },
+                        { memcmp: { offset: 0, bytes: "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS" } }
+                    ],
+                    dataSlice: { offset: 0, length: 0 }
+                }
+            ]
+        });
+
+        for (const rpc of RPC_LIST) {
+            try {
+                const rpcRes = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
+                if (!rpcRes.ok) continue;
+                const json = await rpcRes.json();
+
+                if (json.result) {
+                    const count = json.result.length;
+                    res.json({
+                        count: count,
+                        formatted: new Intl.NumberFormat('en-US').format(count)
+                    });
+                    return;
+                }
+            } catch (e) { console.warn(`RPC ${rpc} failed:`, e); }
+        }
+        res.status(502).json({ error: "RPCs Failed", formatted: "..." });
+    } catch (e) {
+        console.error("V1 Holders Error:", e);
+        res.status(500).json({ error: "Proxy Failed" });
+    }
+});
+
 // --- BAGS FEATURE ROUTES ---
 
 // GET /api/bags/status (Authenticated)
