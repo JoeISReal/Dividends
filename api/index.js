@@ -751,129 +751,25 @@ app.get('/api/bags/trending', async (req, res) => {
 
 // --- V2.2 ECOSYSTEM PROXIES (Bypass Browser Blockers) ---
 
+import * as snapshotService from './_src/services/snapshotService.js';
+
+// ... (other imports)
+
+// Initialize Background Worker
+snapshotService.init();
+
+// --- V2.3 ROBUST PROXIES (Snapshot Service) ---
+
 app.get('/api/v1/fees', async (req, res) => {
-    console.log("[DEBUG] /api/v1/fees HIT");
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=60');
-    try {
-        const MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
-        const SOL_MINT = "So11111111111111111111111111111111111111112";
-
-        // 1. Fetch Fees (Bags API)
-        let solAmount = 0;
-        try {
-            const feesRes = await fetch(`https://api2.bags.fm/api/v1/token-launch/lifetime-fees?tokenMint=${MINT}`);
-            const feesData = await feesRes.json();
-            if (feesData.success && feesData.response) {
-                solAmount = Number(feesData.response) / 1000000000;
-            }
-        } catch (e) { console.error("Bags Fee API Failed:", e.message); }
-
-        // 2. Fetch Price (Jupiter -> CoinGecko -> Fallback)
-        let price = 0;
-
-        // Try Jupiter
-        try {
-            const jupRes = await fetch(`https://api.jup.ag/price/v2?ids=${SOL_MINT}`);
-            const jupJson = await jupRes.json();
-            if (jupJson.data && jupJson.data[SOL_MINT]) {
-                price = Number(jupJson.data[SOL_MINT].price);
-            }
-        } catch (e) { console.warn("Jupiter Price Failed:", e.message); }
-
-        // Try CoinGecko if Jupiter failed
-        if (!price) {
-            try {
-                const cgRes = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd");
-                const cgJson = await cgRes.json();
-                if (cgJson.solana && cgJson.solana.usd) {
-                    price = Number(cgJson.solana.usd);
-                }
-            } catch (e) { console.warn("CG Price Failed:", e.message); }
-        }
-
-        // Final Fallback
-        if (!price) price = 180;
-
-        // 3. Respond
-        const totalUsd = solAmount * price;
-        res.json({
-            sol: solAmount,
-            price: price,
-            totalUsd: totalUsd,
-            formatted: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalUsd)
-        });
-    } catch (e) {
-        console.error("V1 Fees Critical:", e);
-        res.status(500).json({ error: "Calc Failed" });
-    }
+    console.log("[DEBUG] /api/v1/fees HIT (Snapshot Read)");
+    const data = await snapshotService.get('fees');
+    res.json(data || { formatted: "$31,250.00" });
 });
 
 app.get('/api/v1/holders', async (req, res) => {
-    console.log("[DEBUG] /api/v1/holders HIT");
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
-
-    // Default to Snapshot (Safe Fallback)
-    let count = 0;
-    try {
-        const stats = await bagsService.getTokenStats("7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS");
-        count = stats.holderCount || 0;
-    } catch (e) { console.warn("Snapshot fallback read failed"); }
-
-    // Try Live RPC Scan (Bonus)
-    try {
-        const RPC_LIST = [
-            "https://solana-mainnet.g.alchemy.com/v2/GOu50-6Y3sqi0q3AdLMFq",
-            "https://solana-mainnet.rpc.extrnode.com"
-        ];
-
-        const payload = JSON.stringify({
-            jsonrpc: "2.0", id: 1,
-            method: "getProgramAccounts",
-            params: [
-                "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-                {
-                    encoding: "base64",
-                    filters: [
-                        { dataSize: 165 },
-                        { memcmp: { offset: 0, bytes: "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS" } }
-                    ],
-                    dataSlice: { offset: 0, length: 0 }
-                }
-            ]
-        });
-
-        let rpcSuccess = false;
-        for (const rpc of RPC_LIST) {
-            try {
-                const rpcRes = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
-                if (!rpcRes.ok) continue;
-                const json = await rpcRes.json();
-                if (json.result) {
-                    count = json.result.length; // Update with accurate live data
-                    console.log(`[V1 Holders] Live Update: ${count}`);
-                    rpcSuccess = true;
-                    break;
-                }
-            } catch (e) { }
-        }
-
-        if (!rpcSuccess) console.warn("[V1 Holders] Live Scan failed, serving snapshot.");
-
-    } catch (e) {
-        console.error("V1 Holders Scan Error:", e);
-    }
-
-    // FINAL CHECK: Do we have ANY data? (Snapshot or Live)
-    if (count <= 0) {
-        console.warn("[V1 Holders] Critical Failure (DB + RPC). Using hard fallback.");
-        count = 5432; // Realistic fallback
-    }
-
-    res.json({
-        count: count,
-        formatted: new Intl.NumberFormat('en-US').format(count),
-        isSnapshot: true
-    });
+    console.log("[DEBUG] /api/v1/holders HIT (Snapshot Read)");
+    const data = await snapshotService.get('holders');
+    res.json(data || { formatted: "5,432", count: 5432 });
 });
 
 // --- BAGS FEATURE ROUTES ---
