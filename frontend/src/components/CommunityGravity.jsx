@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { TierBadge } from './TierBadge';
-import { TierBadge } from './TierBadge';
+
 
 
 export default function CommunityGravity() {
