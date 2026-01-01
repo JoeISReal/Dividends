@@ -16,6 +16,13 @@ export default function CommunityGravity() {
             "https://api.mainnet-beta.solana.com"
         ];
 
+        // Prioritize Private RPC if available (Set in .env or Vercel)
+        const privateRpc = import.meta.env.VITE_PRIVATE_RPC_URL;
+        if (privateRpc) {
+            console.log("Using Private RPC");
+            RPC_LIST.unshift(privateRpc);
+        }
+
         const fetchDirectly = async () => {
             const MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
             const payload = JSON.stringify({
