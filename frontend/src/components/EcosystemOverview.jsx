@@ -9,46 +9,89 @@ export default function EcosystemOverview() {
         mood: '...'
     });
 
+    const RPC_LIST = [
+        "https://solana-mainnet.g.alchemy.com/v2/GOu50-6Y3sqi0q3AdLMFq",
+        "https://solana-mainnet.rpc.extrnode.com",
+        "https://rpc.ankr.com/solana"
+    ];
+
     useEffect(() => {
         let mounted = true;
-        const fetchData = async () => {
+
+        const parseFees = async () => {
+            // 1. Fetch Fees (Lamports)
             try {
-                // Parallel fetch for speed
-                const [feesRes, statsRes, moodRes] = await Promise.all([
-                    fetch('/api/bags/token/fees'),
-                    fetch('/api/bags/token/stats'),
-                    fetch('/api/ecosystem/mood')
-                ]);
+                const res = await fetch("https://api2.bags.fm/api/v1/token-launch/lifetime-fees?tokenMint=7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS");
+                const data = await res.json();
+                if (data.success && data.response) {
+                    const sol = Number(data.response) / 1000000000;
 
+                    // 2. Fetch Price (Jupiter)
+                    let price = 180; // Safe fallback
+                    try {
+                        const pRes = await fetch("https://api.jup.ag/price/v2?ids=So11111111111111111111111111111111111111112");
+                        const pJson = await pRes.json();
+                        if (pJson.data && pJson.data['So11111111111111111111111111111111111111112']) {
+                            price = Number(pJson.data['So11111111111111111111111111111111111111112'].price);
+                        }
+                    } catch (e) { console.warn("Price fetch failed", e); }
+
+                    const totalUsd = sol * price;
+                    if (mounted) {
+                        setStats(prev => ({
+                            ...prev,
+                            fees: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalUsd)
+                        }));
+                    }
+                }
+            } catch (e) { console.error("Fees Error:", e); }
+        };
+
+        const countHolders = async () => {
+            const payload = JSON.stringify({
+                jsonrpc: "2.0", id: 1, method: "getProgramAccounts",
+                params: [
+                    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                    {
+                        encoding: "base64",
+                        filters: [
+                            { dataSize: 165 },
+                            { memcmp: { offset: 0, bytes: "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS" } }
+                        ],
+                        dataSlice: { offset: 0, length: 0 } // Just count, no data
+                    }
+                ]
+            });
+
+            for (const rpc of RPC_LIST) {
                 if (!mounted) return;
-
-                const feesData = await feesRes.json();
-                const statsData = await statsRes.json();
-                const moodData = await moodRes.json();
-
-                // Format Fees: USD Currency
-                const feesVal = feesData.totalFees
-                    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(feesData.totalFees)
-                    : '$0.00';
-
-                // Format Holders
-                const holdersVal = statsData.holderCount
-                    ? new Intl.NumberFormat('en-US').format(statsData.holderCount)
-                    : '---';
-
-                setStats({
-                    fees: feesVal,
-                    holders: holdersVal,
-                    mood: moodData.mood || 'STABLE'
-                });
-            } catch (e) {
-                console.error("Dashboard Stats Error:", e);
+                try {
+                    const res = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
+                    if (!res.ok) continue;
+                    const json = await res.json();
+                    if (json.result) {
+                        if (mounted) {
+                            setStats(prev => ({
+                                ...prev,
+                                holders: new Intl.NumberFormat('en-US').format(json.result.length)
+                            }));
+                        }
+                        return; // Success
+                    }
+                } catch (e) { console.warn("Holder Count Error", e); }
             }
         };
 
-        fetchData();
+        // Execute
+        parseFees();
+        countHolders();
+
         // Refresh every 60s
-        const interval = setInterval(fetchData, 60000);
+        const interval = setInterval(() => {
+            parseFees();
+            countHolders();
+        }, 60000);
+
         return () => { mounted = false; clearInterval(interval); };
     }, []);
 
