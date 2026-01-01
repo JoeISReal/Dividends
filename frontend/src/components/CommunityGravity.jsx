@@ -11,16 +11,16 @@ export default function CommunityGravity() {
         let mounted = true;
 
         const RPC_LIST = [
+            "https://solana-mainnet.g.alchemy.com/v2/GOu50-6Y3sqi0q3AdLMFq0P60j2a-43s", // Alchemy Premium (High Priority)
             "https://solana-mainnet.rpc.extrnode.com",
             "https://rpc.ankr.com/solana",
             "https://api.mainnet-beta.solana.com"
         ];
 
-        // Prioritize Private RPC if available (Set in .env or Vercel)
-        const privateRpc = import.meta.env.VITE_PRIVATE_RPC_URL;
-        if (privateRpc) {
-            console.log("Using Private RPC");
-            RPC_LIST.unshift(privateRpc);
+        // Also check environment variable for overrides
+        const envRpc = import.meta.env.VITE_PRIVATE_RPC_URL;
+        if (envRpc && !RPC_LIST.includes(envRpc)) {
+            RPC_LIST.unshift(envRpc);
         }
 
         const fetchDirectly = async () => {
