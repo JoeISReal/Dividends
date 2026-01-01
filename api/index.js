@@ -15,6 +15,7 @@ import { Connection, PublicKey } from '@solana/web3.js'; // Added
 import { Economy } from './_src/modules/Economy.js';
 import { STREAMS, UPGRADES } from './_src/data/GameData.js';
 import { EventSystem } from './_src/modules/Events.js';
+import * as bagsService from './_src/services/bagsService.js';
 import { signSession } from './_src/services/authCookies.js';
 import { requireAuth } from './_src/middleware/requireAuth.js';
 import * as bagsService from './_src/services/bagsService.js';
