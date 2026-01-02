@@ -488,8 +488,12 @@ router.post('/raids/create', requireAuth, async (req, res) => {
     const { targetUrl, objective, briefing, suggestedReplies } = req.body;
     const modWallet = req.session.wallet;
 
+    console.log('[RAID CREATE] Wallet:', modWallet);
     const modUser = await db.collection('users').findOne({ handle: modWallet });
+    console.log('[RAID CREATE] User found:', modUser ? `Yes (role: ${modUser.role})` : 'No');
+
     if (!modUser || (modUser.role !== 'MOD' && modUser.role !== 'ADMIN')) {
+        console.log('[RAID CREATE] Access denied - User role:', modUser?.role || 'none');
         return res.status(403).json({ error: "Access denied" });
     }
 
