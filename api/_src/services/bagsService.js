@@ -115,12 +115,17 @@ export async function getLeaderboard() {
         }
     }
 
+    // KNOWN WALLETS OVERRIDE
+    const KNOWN_WALLETS = {
+        'HLnpSz9h2S4hiLQ43rnSD9XkkcUThA7B8hQMKmDaiTLcC': 'Meteora Pool Authority'
+    };
+
     // 3. Merge & Return
     return {
         updatedAt: _currentSnapshot.timestamp,
         topHolders: topRaw.map(h => ({
             wallet: h.wallet,
-            username: userMap[h.wallet] || null, // New field
+            username: KNOWN_WALLETS[h.wallet] || userMap[h.wallet] || null, // Priority: Known > DB > Null
             tier: calculateTier(h.balance),
             balanceApprox: h.balance,
             share: (h.balance / 1000000000) * 100
