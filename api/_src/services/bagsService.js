@@ -117,7 +117,7 @@ export async function getLeaderboard() {
 
     // KNOWN WALLETS OVERRIDE
     const KNOWN_WALLETS = {
-        'HLnpSz9h2S4hiLQ43rnSD9XkkcUThA7B8hQMKmDaiTLcC': { name: 'Meteora Pool Authority', tier: 'liquidity' }
+        'HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC': { name: 'Meteora Pool Authority', tier: 'liquidity' }
     };
 
     // 3. Merge & Return
