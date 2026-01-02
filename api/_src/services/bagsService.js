@@ -174,18 +174,14 @@ export async function getTrendingTokens() {
 // --- Internal Logic ---
 
 function calculateTier(balance) {
-    if (balance <= 0) return 'none';
-
-    // Explicit / Hardcoded Tiers (High End)
-    if (balance >= 10000000) return 'authority';
-    if (balance >= 1000000) return 'inner_circle';
-    if (balance >= 250000) return 'shark';
-
-    // Dynamic Tiers (Relative to distribution)
-    if (balance >= _tierThresholds.whale) return 'whale';
-    if (balance >= _tierThresholds.chad) return 'chad'; // Note: CHAD not in registry yet? Registry had CONTRIBUTOR?
-    if (balance >= _tierThresholds.medium) return 'contributor'; // Mapping MEDIUM -> CONTRIBUTOR for safety if MEDIUM doesn't exist
-    return 'holder'; // Default fallthrough for > 0
+    if (balance <= 0) return 'shrimp';
+    if (balance >= 10000000) return 'kraken';
+    if (balance >= 1000000) return 'whale';
+    if (balance >= 500000) return 'orca';
+    if (balance >= 100000) return 'shark';
+    if (balance >= 50000) return 'dolphin';
+    if (balance >= 10000) return 'crab';
+    return 'shrimp';
 }
 
 async function loadLatestSnapshot() {
