@@ -42,7 +42,8 @@ router.get('/users', requireAdmin, async (req, res) => {
                 level: 1,
                 lifetimeYield: 1,
                 lastActive: 1,
-                createdAt: 1
+                createdAt: 1,
+                hiddenFromLeaderboard: 1
             })
             .toArray();
 
@@ -117,6 +118,66 @@ router.get('/audit-log', requireAdmin, async (req, res) => {
     } catch (e) {
         console.error("Audit Log Error:", e);
         res.status(500).json({ error: "Failed to fetch audit log" });
+    }
+});
+
+// POST /api/admin/leaderboard/hide - Hide user from leaderboard
+router.post('/leaderboard/hide', requireAdmin, async (req, res) => {
+    const { targetHandle } = req.body;
+    const adminWallet = req.session.wallet;
+
+    try {
+        const result = await db.collection('users').updateOne(
+            { handle: targetHandle },
+            { $set: { hiddenFromLeaderboard: true } }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Audit log
+        await db.collection('audit_log').insertOne({
+            admin: adminWallet,
+            action: 'HIDE_FROM_LEADERBOARD',
+            target: targetHandle,
+            timestamp: new Date()
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Hide from leaderboard error:', e);
+        res.status(500).json({ error: 'Failed to hide user' });
+    }
+});
+
+// POST /api/admin/leaderboard/unhide - Unhide user from leaderboard
+router.post('/leaderboard/unhide', requireAdmin, async (req, res) => {
+    const { targetHandle } = req.body;
+    const adminWallet = req.session.wallet;
+
+    try {
+        const result = await db.collection('users').updateOne(
+            { handle: targetHandle },
+            { $set: { hiddenFromLeaderboard: false } }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Audit log
+        await db.collection('audit_log').insertOne({
+            admin: adminWallet,
+            action: 'UNHIDE_FROM_LEADERBOARD',
+            target: targetHandle,
+            timestamp: new Date()
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Unhide from leaderboard error:', e);
+        res.status(500).json({ error: 'Failed to unhide user' });
     }
 });
 

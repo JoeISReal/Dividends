@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../state/gameStore';
+import LeaderboardModPanel from './LeaderboardModPanel';
 
 import { soundManager } from '../game/SoundManager';
 import { TierBadge } from './TierBadge';
@@ -107,6 +108,9 @@ export default function LeaderboardTab() {
                 <div className="leaderboard-list" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {listData
                         .filter(u => {
+                            // Filter out hidden users
+                            if (u.hiddenFromLeaderboard) return false;
+                            // Legacy filters (can be removed once all test accounts are hidden via panel)
                             const h = u.handle || '';
                             if (h.startsWith('naSo') || h.startsWith('NaSo') || h.includes('Solx')) return false;
                             const d = u.displayName || '';
@@ -186,6 +190,9 @@ export default function LeaderboardTab() {
                     ))}
                 </div>
             )}
+
+            {/* Leaderboard Moderation Panel (ADMIN only) */}
+            <LeaderboardModPanel />
         </div >
     );
 }
