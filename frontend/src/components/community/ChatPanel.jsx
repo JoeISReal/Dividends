@@ -120,19 +120,23 @@ export function ChatPanel({ active }) {
     const handleModAction = (actionPayload) => {
         const { action, targetId } = actionPayload;
 
-        setMessages(prev => prev.map(m => {
-            if (m._id !== targetId) return m;
+        setMessages(prev => {
+            // For remove action, just filter out the message entirely
+            if (action === 'remove') {
+                return prev.filter(m => m._id !== targetId);
+            }
 
-            if (action === 'remove') return { ...m, status: 'REMOVED', text: '[REMOVED]' };
-            if (action === 'shadow') return { ...m, status: 'SHADOWED' }; // Only mods see this anyway usually
-            return m;
-        }).filter(m => {
-            // Filter out REMOVED/SHADOWED for normal users immediately if we want live cleanup
-            // But we might want to show [REMOVED] placeholder
-            if (action === 'remove' && !isStaff) return false;
-            if (action === 'shadow' && !isStaff) return false;
-            return true;
-        }));
+            // For shadow action, update status and filter for non-staff
+            if (action === 'shadow') {
+                const updated = prev.map(m =>
+                    m._id === targetId ? { ...m, status: 'SHADOWED' } : m
+                );
+                // Filter out shadowed messages for non-staff
+                return isStaff ? updated : updated.filter(m => m.status !== 'SHADOWED');
+            }
+
+            return prev;
+        });
     };
 
     const handleSend = async (e) => {

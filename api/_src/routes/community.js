@@ -67,7 +67,11 @@ router.get('/chat/recent', requireAuth, async (req, res) => {
         const user = await db.collection('users').findOne({ handle: req.session.wallet });
         const isStaff = user?.role === 'MOD' || user?.role === 'ADMIN';
 
-        const query = isStaff ? {} : { status: { $ne: 'SHADOWED' } };
+        // Build query: Always exclude REMOVED, exclude SHADOWED for non-staff
+        let query = { status: { $ne: 'REMOVED' } };
+        if (!isStaff) {
+            query = { status: { $nin: ['REMOVED', 'SHADOWED'] } };
+        }
 
         const messages = await db.collection('chat')
             .find(query)
