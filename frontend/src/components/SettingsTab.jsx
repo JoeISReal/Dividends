@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { soundManager } from '../game/SoundManager';
 import { useGameStore } from '../state/gameStore';
+import AdminPanel from './AdminPanel';
 
 export default function SettingsTab() {
     // Initialize with current global volume
@@ -107,6 +108,9 @@ export default function SettingsTab() {
                     ⏻ Disconnect Wallet
                 </button>
             </div>
+
+            {/* Admin Panel - Only visible to ADMIN users */}
+            <AdminPanel />
         </div>
     );
 }

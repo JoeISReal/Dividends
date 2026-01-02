@@ -189,6 +189,275 @@ router.post('/chat/mod/action', requireAuth, async (req, res) => {
     }
 });
 
+// GET /api/community/mod/users - Search users with moderation status
+router.get('/mod/users', requireAuth, async (req, res) => {
+    const { search, page = 1, limit = 20 } = req.query;
+    const modWallet = req.session.wallet;
+
+    // Verify Mod Auth
+    const modUser = await db.collection('users').findOne({ handle: modWallet });
+    if (!modUser || (modUser.role !== 'MOD' && modUser.role !== 'ADMIN')) {
+        return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        let query = {};
+        if (search) {
+            query = {
+                $or: [
+                    { handle: { $regex: search, $options: 'i' } },
+                    { displayName: { $regex: search, $options: 'i' } }
+                ]
+            };
+        }
+
+        const users = await db.collection('users')
+            .find(query)
+            .sort({ lastActive: -1 })
+            .skip(skip)
+            .limit(parseInt(limit))
+            .project({
+                handle: 1,
+                displayName: 1,
+                role: 1,
+                holderTier: 1,
+                level: 1,
+                chatBanned: 1,
+                shadowBanned: 1,
+                mutedUntil: 1,
+                bannedBy: 1,
+                bannedAt: 1,
+                banReason: 1,
+                lastActive: 1
+            })
+            .toArray();
+
+        const total = await db.collection('users').countDocuments(query);
+
+        res.json({
+            users,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (e) {
+        console.error("Mod Users List Error:", e);
+        res.status(500).json({ error: "Failed to fetch users" });
+    }
+});
+
+// POST /api/community/mod/ban - Ban user from chat
+router.post('/mod/ban', requireAuth, async (req, res) => {
+    const { targetHandle, reason } = req.body;
+    const modWallet = req.session.wallet;
+
+    const modUser = await db.collection('users').findOne({ handle: modWallet });
+    if (!modUser || (modUser.role !== 'MOD' && modUser.role !== 'ADMIN')) {
+        return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+        await db.collection('users').updateOne(
+            { handle: targetHandle },
+            {
+                $set: {
+                    chatBanned: true,
+                    bannedBy: modWallet,
+                    bannedAt: new Date(),
+                    banReason: reason || 'No reason provided'
+                }
+            }
+        );
+
+        // Audit log
+        await db.collection('audit_log').insertOne({
+            mod: modWallet,
+            action: 'BAN',
+            target: targetHandle,
+            reason,
+            timestamp: new Date()
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Ban Error:", e);
+        res.status(500).json({ error: "Ban failed" });
+    }
+});
+
+// POST /api/community/mod/unban - Unban user
+router.post('/mod/unban', requireAuth, async (req, res) => {
+    const { targetHandle } = req.body;
+    const modWallet = req.session.wallet;
+
+    const modUser = await db.collection('users').findOne({ handle: modWallet });
+    if (!modUser || (modUser.role !== 'MOD' && modUser.role !== 'ADMIN')) {
+        return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+        await db.collection('users').updateOne(
+            { handle: targetHandle },
+            {
+                $unset: {
+                    chatBanned: "",
+                    bannedBy: "",
+                    bannedAt: "",
+                    banReason: ""
+                }
+            }
+        );
+
+        // Audit log
+        await db.collection('audit_log').insertOne({
+            mod: modWallet,
+            action: 'UNBAN',
+            target: targetHandle,
+            timestamp: new Date()
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Unban Error:", e);
+        res.status(500).json({ error: "Unban failed" });
+    }
+});
+
+// POST /api/community/mod/mute - Mute user (already exists in mod/action, but adding dedicated endpoint)
+router.post('/mod/mute', requireAuth, async (req, res) => {
+    const { targetHandle, duration, reason } = req.body;
+    const modWallet = req.session.wallet;
+
+    const modUser = await db.collection('users').findOne({ handle: modWallet });
+    if (!modUser || (modUser.role !== 'MOD' && modUser.role !== 'ADMIN')) {
+        return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+        const muteDuration = duration || 5 * 60 * 1000; // Default 5 minutes
+        const mutedUntil = new Date(Date.now() + muteDuration);
+
+        await db.collection('users').updateOne(
+            { handle: targetHandle },
+            { $set: { mutedUntil } }
+        );
+
+        // Audit log
+        await db.collection('audit_log').insertOne({
+            mod: modWallet,
+            action: 'MUTE',
+            target: targetHandle,
+            reason,
+            details: { duration: muteDuration },
+            timestamp: new Date()
+        });
+
+        res.json({ success: true, mutedUntil });
+    } catch (e) {
+        console.error("Mute Error:", e);
+        res.status(500).json({ error: "Mute failed" });
+    }
+});
+
+// POST /api/community/mod/unmute - Unmute user
+router.post('/mod/unmute', requireAuth, async (req, res) => {
+    const { targetHandle } = req.body;
+    const modWallet = req.session.wallet;
+
+    const modUser = await db.collection('users').findOne({ handle: modWallet });
+    if (!modUser || (modUser.role !== 'MOD' && modUser.role !== 'ADMIN')) {
+        return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+        await db.collection('users').updateOne(
+            { handle: targetHandle },
+            { $unset: { mutedUntil: "" } }
+        );
+
+        // Audit log
+        await db.collection('audit_log').insertOne({
+            mod: modWallet,
+            action: 'UNMUTE',
+            target: targetHandle,
+            timestamp: new Date()
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Unmute Error:", e);
+        res.status(500).json({ error: "Unmute failed" });
+    }
+});
+
+// POST /api/community/mod/shadow - Shadow ban user
+router.post('/mod/shadow', requireAuth, async (req, res) => {
+    const { targetHandle, reason } = req.body;
+    const modWallet = req.session.wallet;
+
+    const modUser = await db.collection('users').findOne({ handle: modWallet });
+    if (!modUser || (modUser.role !== 'MOD' && modUser.role !== 'ADMIN')) {
+        return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+        await db.collection('users').updateOne(
+            { handle: targetHandle },
+            { $set: { shadowBanned: true } }
+        );
+
+        // Audit log
+        await db.collection('audit_log').insertOne({
+            mod: modWallet,
+            action: 'SHADOW_BAN',
+            target: targetHandle,
+            reason,
+            timestamp: new Date()
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Shadow Ban Error:", e);
+        res.status(500).json({ error: "Shadow ban failed" });
+    }
+});
+
+// POST /api/community/mod/unshadow - Remove shadow ban
+router.post('/mod/unshadow', requireAuth, async (req, res) => {
+    const { targetHandle } = req.body;
+    const modWallet = req.session.wallet;
+
+    const modUser = await db.collection('users').findOne({ handle: modWallet });
+    if (!modUser || (modUser.role !== 'MOD' && modUser.role !== 'ADMIN')) {
+        return res.status(403).json({ error: "Access denied" });
+    }
+
+    try {
+        await db.collection('users').updateOne(
+            { handle: targetHandle },
+            { $unset: { shadowBanned: "" } }
+        );
+
+        // Audit log
+        await db.collection('audit_log').insertOne({
+            mod: modWallet,
+            action: 'UNSHADOW',
+            target: targetHandle,
+            timestamp: new Date()
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Unshadow Error:", e);
+        res.status(500).json({ error: "Unshadow failed" });
+    }
+});
+
 
 /* =========================================================================
    RAID OPS

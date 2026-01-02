@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ChatPanel } from '../components/community/ChatPanel';
 import { RaidOpsPanel } from '../components/community/RaidOpsPanel';
+import ModeratorPanel from '../components/community/ModeratorPanel';
 import { useGameStore } from '../state/gameStore';
 import { useSystemState } from '../hooks/useSystemState'; // New import
 import '../styles/community.css';
@@ -67,16 +68,25 @@ export default function CommunityOps() {
             </div>
 
             {/* Main Grid */}
-            <div className="comm-grid">
-                {/* Left: Chat */}
-                <section className={`comm-col-left ${mobileTab === 'LIVE' ? 'mobile-show' : 'mobile-hide'}`}>
-                    <ChatPanel active={true} />
-                </section>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                <div className="comm-grid" style={{ height: 'calc(100vh - 180px)' }}>
+                    {/* Left: Chat */}
+                    <section className={`comm-col-left ${mobileTab === 'LIVE' ? 'mobile-show' : 'mobile-hide'}`}>
+                        <ChatPanel active={true} />
+                    </section>
 
-                {/* Right: Raid */}
-                <section className={`comm-col-right ${mobileTab === 'RAID' ? 'mobile-show' : 'mobile-hide'}`}>
-                    <RaidOpsPanel />
-                </section>
+                    {/* Right: Raid */}
+                    <section className={`comm-col-right ${mobileTab === 'RAID' ? 'mobile-show' : 'mobile-hide'}`}>
+                        <RaidOpsPanel />
+                    </section>
+                </div>
+
+                {/* Moderator Panel (MOD/ADMIN only) - Below grid, requires scroll */}
+                {(isMod || isAdmin) && (
+                    <div style={{ maxWidth: '1200px', margin: '24px auto 40px', padding: '0 20px' }}>
+                        <ModeratorPanel />
+                    </div>
+                )}
             </div>
         </div>
     );

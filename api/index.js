@@ -19,6 +19,7 @@ import { EventSystem } from './_src/modules/Events.js';
 
 import { signSession } from './_src/services/authCookies.js';
 import { requireAuth } from './_src/middleware/requireAuth.js';
+import { requireAdmin } from './_src/middleware/requireAdmin.js';
 import * as bagsService from './_src/services/bagsService.js';
 import * as solanaService from './_src/services/solanaService.js';
 import communityRoutes from './_src/routes/community.js'; // Added Community Routes
@@ -139,9 +140,10 @@ app.post('/api/click', (req, res) => {
     res.json({ success: true, yield: 1 * xpMultiplier, riskScore: risk.riskScore });
 });
 
-// --- COMMUNITY ROUTES ---
+// Import routes (will be mounted after DB middleware)
 import communityRouter from './_src/routes/community.js';
-app.use('/api/community', communityRouter);
+import adminRouter from './_src/routes/admin.js';
+
 
 // Lazy Connection Middleware
 app.use(async (req, res, next) => {
@@ -167,6 +169,10 @@ app.use(async (req, res, next) => {
         res.status(503).json({ error: "Database Connection Failed" });
     }
 });
+
+// --- MOUNT ROUTES AFTER DB MIDDLEWARE ---
+app.use('/api/community', communityRouter);
+app.use('/api/admin', adminRouter);
 
 // --- AUTH API ---
 
