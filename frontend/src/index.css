@@ -533,7 +533,85 @@ body {
   }
 }
 
-.directive--info .directive__dot,
-.directive--success .directive__dot {
-  animation: pulseSoft 2.4s ease-in-out infinite;
+
+/* =========================
+   GRAVITY WELL RANKS (Authoritative)
+========================= */
+
+.rank-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: all 0.2s ease;
+}
+
+/* TOP 3: Dominant */
+.rank-top {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid var(--accent-gold);
+  min-height: 56px;
+}
+
+.rank-top .rank-number {
+  color: var(--accent-gold);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.rank-top .wallet-address {
+  font-size: 15px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.rank-top .meta-info {
+  opacity: 0.8;
+}
+
+/* MID (4-10): Standard */
+.rank-mid {
+  padding: 12px;
+  background: transparent;
+  border-left: 2px solid transparent;
+}
+
+.rank-mid .rank-number {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.rank-mid .wallet-address {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.rank-mid .meta-info {
+  opacity: 0.5;
+}
+
+/* LOW (11+): Muted */
+.rank-low {
+  padding: 8px;
+  background: transparent;
+  border-left: 2px solid transparent;
+  opacity: 0.6;
+}
+
+.rank-low .rank-number {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.rank-low .wallet-address {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.rank-low:hover {
+  opacity: 0.9;
+  background: rgba(255, 255, 255, 0.01);
 }

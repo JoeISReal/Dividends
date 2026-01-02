@@ -1,19 +1,24 @@
 import React from 'react';
 import { SystemStateStrip } from './SystemStateStrip';
-import { SystemFeed } from './SystemFeed'; // Assuming this exists or borrowing logic
 import { useSystemState } from '../hooks/useSystemState';
 
 export default function SystemAwareness() {
     const { risk, signal } = useSystemState();
 
-    // Simple visual mapping for Risk Pressure
-    const riskColor = risk.status === 'CRITICAL' ? 'var(--accent-red)'
-        : risk.status === 'ELEVATED' ? 'var(--accent-orange)'
-            : 'var(--accent-green)';
+    // Map risk status to severity color and segment count
+    const getRiskVisuals = (status) => {
+        switch (status) {
+            case 'CRITICAL': return { color: 'var(--accent-red)', segments: 12, label: 'CRITICAL' };
+            case 'ELEVATED': return { color: 'var(--accent-orange)', segments: 8, label: 'ELEVATED' };
+            default: return { color: 'var(--accent-green)', segments: 3, label: 'LOW' }; // Stable/Low
+        }
+    };
+
+    const riskVisual = getRiskVisuals(risk.status);
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div className="text-label" style={{ paddingLeft: '4px' }}>SYSTEM AWARENESS</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="text-label" style={{ paddingLeft: '4px', letterSpacing: '0.15em' }}>SYSTEM AWARENESS</div>
 
             {/* STACK */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -21,59 +26,66 @@ export default function SystemAwareness() {
                 {/* 1. System State Strip (Reuse existing) */}
                 <SystemStateStrip />
 
-                {/* 2. Yield Velocity (Mocked/Simple) */}
+                {/* 2. Yield Velocity (Instrument: Readout) */}
                 <div className="surface-secondary" style={{
-                    padding: '12px 16px',
+                    padding: '16px',
                     borderRadius: 'var(--radius-sm)',
                     border: '1px solid var(--border-subtle)',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    background: 'rgba(0,0,0,0.3)'
                 }}>
-                    <span className="text-label">YIELD VELOCITY</span>
-                    <span className="text-value" style={{ color: 'var(--accent-green)' }}>▲ STABLE</span>
-                </div>
-
-                {/* 3. Risk Pressure */}
-                <div className="surface-secondary" style={{
-                    padding: '12px 16px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-subtle)',
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span className="text-label">RISK PRESSURE</span>
-                        <span className="text-label" style={{ color: riskColor }}>{risk.status}</span>
-                    </div>
-                    {/* Safe gauge visual */}
-                    <div style={{ height: '4px', width: '100%', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span className="text-label" style={{ fontSize: '10px' }}>YIELD VELOCITY</span>
                         <div style={{
-                            height: '100%',
-                            width: risk.status === 'CRITICAL' ? '90%' : (risk.status === 'ELEVATED' ? '60%' : '20%'),
-                            background: riskColor,
-                            transition: 'all 0.5s ease'
-                        }} />
-                    </div>
-                </div>
-
-                {/* 4. Directive Feed (Manual Implementation if pure component doesn't fit, reusing logic) */}
-                <div style={{ marginTop: '8px' }}>
-                    {/* We can reuse the SystemFeed logic or component if it fits the "Silent = Stability" rule */}
-                    {/* Assuming SystemFeed handles its own rendering and we just place it */}
-                    {/* If it's too noisy, we might need to wrap or customize it. 
-                         For now, let's place it. User said "Directive Feed -> Authoritative only" */}
-                    <div className="surface-secondary" style={{
-                        padding: '12px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: '1px solid var(--border-subtle)',
-                        minHeight: '100px'
-                    }}>
-                        <div className="text-label" style={{ marginBottom: '8px' }}>DIRECTIVE FEED</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                            {/* Placeholder for feed content */}
-                            <SystemFeed limit={3} />
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            color: 'var(--accent-green)',
+                            textShadow: '0 0 10px rgba(74, 222, 128, 0.1)'
+                        }}>
+                            <span style={{ fontSize: '18px' }}>▲</span>
+                            <span className="text-value" style={{ fontSize: '16px' }}>STABLE</span>
                         </div>
                     </div>
+                    {/* Tick marks decoration */}
+                    <div style={{ display: 'flex', gap: '2px', opacity: 0.3 }}>
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} style={{ width: '2px', height: '12px', background: 'var(--text-primary)' }} />
+                        ))}
+                    </div>
                 </div>
+
+                {/* 3. Risk Pressure (Instrument: Segmented Gauge) */}
+                <div className="surface-secondary" style={{
+                    padding: '16px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'rgba(0,0,0,0.3)'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'flex-end' }}>
+                        <span className="text-label" style={{ fontSize: '10px' }}>RISK PRESSURE</span>
+                        <span className="text-value" style={{ color: riskVisual.color, fontSize: '14px' }}>{riskVisual.label}</span>
+                    </div>
+
+                    {/* Segmented Bar */}
+                    <div style={{ display: 'flex', gap: '2px', height: '6px', width: '100%' }}>
+                        {[...Array(12)].map((_, i) => {
+                            const active = i < riskVisual.segments;
+                            return (
+                                <div key={i} style={{
+                                    flex: 1,
+                                    background: active ? riskVisual.color : 'rgba(255,255,255,0.1)',
+                                    opacity: active ? 1 : 0.2,
+                                    borderRadius: '1px'
+                                }} />
+                            );
+                        })}
+                    </div>
+                </div>
+
+
 
             </div>
         </div>

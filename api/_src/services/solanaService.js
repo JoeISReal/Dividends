@@ -63,30 +63,74 @@ async function executeWithRetry(operation, retries = 1) {
 
 
 /**
- * STRATEGY 1: Heavy Scan (All Holders) using getParsedProgramAccounts
- * NOTE: Often blocked by public RPCs.
+ * STRATEGY 1: Heavy Scan (All Holders) using Raw getProgramAccounts
+ * NOTE: Bypasses automatic parsing to avoid timeouts on public RPCs.
  */
 export async function getAllHolders(mintAddress = DIVIDENDS_MINT) {
     return executeWithRetry(async (conn) => {
-        // Short timeout for heavy call to fail fast so we can fallback in the caller if needed
-        const accounts = await Promise.race([
-            conn.getParsedProgramAccounts(
-                TOKEN_PROGRAM_ID,
-                {
-                    filters: [
-                        { dataSize: 165 },
-                        { memcmp: { offset: 0, bytes: mintAddress } },
-                    ],
-                }
-            ),
-            new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 15000))
-        ]);
+        console.log(`[SolanaService] Starting Heavy Scan (Raw) for ${mintAddress}...`);
 
-        return accounts.map(a => ({
-            wallet: a.account.data.parsed.info.owner,
-            balance: a.account.data.parsed.info.tokenAmount.uiAmount,
-            tokenAccount: a.pubkey.toString()
-        })).filter(h => h.balance > 0);
+        // 1. Fetch Mint Decimals (needed for UI Amount)
+        let decimals = 9;
+        try {
+            const info = await conn.getParsedAccountInfo(new PublicKey(mintAddress));
+            if (info.value?.data?.parsed?.info?.decimals !== undefined) {
+                decimals = info.value.data.parsed.info.decimals;
+            }
+        } catch (e) {
+            console.warn("[SolanaService] Failed to fetch decimals, defaulting to 9");
+        }
+
+        // 2. Fetch All Accounts (Raw Encoding) to avoid RPC timeout on parsing
+        const accounts = await conn.getProgramAccounts(TOKEN_PROGRAM_ID, {
+            filters: [
+                { dataSize: 165 }, // SPL Token Account Size
+                { memcmp: { offset: 0, bytes: mintAddress } },
+            ],
+            encoding: 'base64'
+        });
+
+        console.log(`[SolanaService] Raw Scan returned ${accounts.length} accounts. Parsing...`);
+
+        const results = [];
+        const divider = Math.pow(10, decimals);
+
+        for (const { account, pubkey } of accounts) {
+            // Manual Parsing of SPL Token Layout
+            // Offset 0: Mint (32)
+            // Offset 32: Owner (32)
+            // Offset 64: Amount (8, u64 LE)
+
+            const data = account.data;
+
+            let buffer;
+            if (Buffer.isBuffer(data)) {
+                buffer = data;
+            } else if (Array.isArray(data)) {
+                buffer = Buffer.from(data[0], 'base64');
+            } else {
+                buffer = Buffer.from(data, 'base64');
+            }
+
+            // Read Amount (Offset 64)
+            const amountRaw = buffer.readBigUInt64LE(64);
+
+            if (amountRaw === 0n) continue;
+
+            // Read Owner (Offset 32)
+            const ownerBytes = buffer.subarray(32, 64);
+            const owner = new PublicKey(ownerBytes).toBase58();
+
+            const uiAmount = Number(amountRaw) / divider;
+
+            results.push({
+                wallet: owner,
+                balance: uiAmount,
+                tokenAccount: pubkey.toString()
+            });
+        }
+
+        return results.sort((a, b) => b.balance - a.balance);
     });
 }
 

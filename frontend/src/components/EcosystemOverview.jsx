@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../state/gameStore';
+import { TierBadge } from './TierBadge';
 
 export default function EcosystemOverview() {
     const user = useGameStore(state => state.auth.user);
@@ -67,7 +68,7 @@ export default function EcosystemOverview() {
 
     const metrics = [
         { label: 'CURRENT VALUE', value: stats.fees },
-        { label: 'ACTIVE HOLDERS', value: stats.holders },
+        { label: 'TRACKED HOLDERS', value: stats.holders },
     ];
 
     return (
@@ -93,9 +94,7 @@ export default function EcosystemOverview() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                     <span className="text-label" style={{ fontSize: '10px', opacity: 0.6 }}>YOUR TIER</span>
-                    <span className="text-value" style={{ fontSize: '14px', color: 'var(--accent-gold)' }}>
-                        {user?.holderTier || 'MEMBER'}
-                    </span>
+                    <TierBadge tier={user?.holderTier || 'none'} />
                 </div>
             </div>
         </div>

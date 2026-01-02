@@ -21,6 +21,7 @@ import { signSession } from './_src/services/authCookies.js';
 import { requireAuth } from './_src/middleware/requireAuth.js';
 import * as bagsService from './_src/services/bagsService.js';
 import * as solanaService from './_src/services/solanaService.js';
+import communityRoutes from './_src/routes/community.js'; // Added Community Routes
 
 const app = express();
 app.set('trust proxy', 1); // Render/Vercel behind proxy
@@ -40,13 +41,29 @@ console.log("----------------------------------------");
 app.use(cookieParser());
 
 app.use(cors({
-    origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+    origin: function (origin, callback) {
+        const allowedOrigins = [
+            process.env.CLIENT_ORIGIN,
+            "http://localhost:5173",
+            "http://localhost:4173",
+            "http://127.0.0.1:5173"
+        ];
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) !== -1 || !process.env.CLIENT_ORIGIN) {
+            callback(null, true);
+        } else {
+            console.warn("Blocked by CORS:", origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Request logger with Origin debugging
 app.use((req, res, next) => {
@@ -324,7 +341,7 @@ app.post('/api/sync', requireAuth, async (req, res) => {
             .find({})
             .sort({ lifetimeYield: -1 })
             .limit(50)
-            .project({ _id: 0, handle: 1, lifetimeYield: 1, displayName: 1, level: 1, holderTier: 1 })
+            .project({ _id: 0, handle: 1, lifetimeYield: 1, displayName: 1, level: 1, holderTier: 1, avatar: 1 })
             .toArray();
 
         res.json({ success: true, leaderboard: top50 });
@@ -359,12 +376,21 @@ app.post('/api/profile/update', requireAuth, async (req, res) => {
             return res.status(409).json({ error: 'Display Name is already taken.' });
         }
 
+        const updateDoc = {
+            displayName: cleanDisplayName,
+            lastActive: Date.now()
+        };
+
+        if (req.body.avatar) {
+            updateDoc.avatar = req.body.avatar;
+        }
+
         const result = await collection.updateOne(
             { handle },
-            { $set: { displayName: cleanDisplayName, lastActive: Date.now() } }
+            { $set: updateDoc }
         );
 
-        return res.status(200).json({ success: true, displayName: cleanDisplayName });
+        return res.status(200).json({ success: true, displayName: cleanDisplayName, avatar: updateDoc.avatar });
     } catch (e) {
         console.error("Profile Update Error:", e);
         return res.status(500).json({ error: 'Database error' });
@@ -875,6 +901,9 @@ app.get('/api/bags/leaderboard', async (req, res) => {
         res.status(500).json({ error: "Internal Error" });
     }
 });
+
+// --- MOUNT COMMUNITY ROUTES ---
+app.use('/api/community', communityRoutes);
 
 const PORT = process.env.PORT || 3001;
 // Only start server if NOT on Vercel

@@ -88,6 +88,7 @@ export function AppShell({ activeTab, onTabChange, centerContent }) {
                         { id: "community", label: "Community", icon: "🐦" },
                         { id: "settings", label: "Settings", icon: "⚙️" },
                         { id: "help", label: "Help", icon: "❓" },
+                        { id: "prestige", label: "Prestige", icon: "👑" },
                     ].map(item => {
                         const active = activeTab === item.id;
                         return (
@@ -118,8 +119,12 @@ export function AppShell({ activeTab, onTabChange, centerContent }) {
 
                 {/* OPERATOR FOOTER */}
                 <div className="navRail__operator">
-                    <div className="navRail__avatar">
-                        {user?.handle?.[0]?.toUpperCase() || 'O'}
+                    <div className="navRail__avatar" style={{ overflow: 'hidden', padding: 0 }}>
+                        {user?.avatar ? (
+                            <img src={user.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            user?.handle?.[0]?.toUpperCase() || 'O'
+                        )}
                     </div>
 
                     <div className="navRail__operatorText">
@@ -127,7 +132,7 @@ export function AppShell({ activeTab, onTabChange, centerContent }) {
                             <span className="navRail__name">
                                 {user?.displayName || 'Operator'}
                             </span>
-                            <TierBadge />
+                            <TierBadge tier={user?.holderTier} balance={balance} />
                         </div>
                         <div className="navRail__meta mono">
                             ${balance.toFixed(0)} · ${yps.toFixed(2)}/s · Lvl {level}

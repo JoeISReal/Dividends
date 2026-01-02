@@ -251,20 +251,16 @@ async function refreshSnapshot() {
     // 1. Fetch Holders via RPC (Centralized Service)
     let holdersList = [];
     try {
-        // Try heavy scan first
-        holdersList = await solanaService.getAllHolders();
-        console.log(`[BagsService] Heavy scan success. Count: ${holdersList.length}`);
+        // USER CONFIG: "Top 100 Only" - Bypassing Heavy Scan (getAllHolders) to avoid RPC 429s.
+        // utilizing getTopHolders which uses getTokenLargestAccounts (RPC limited to 20 usually).
+        console.log("[BagsService] Fetching Top Holders (Light Scan)...");
+        holdersList = await solanaService.getTopHolders(DIVIDENDS_MINT, 100);
+        console.log(`[BagsService] Light scan success. Count: ${holdersList.length}`);
     } catch (e) {
-        console.warn(`[BagsService] Heavy scan failed (${e.message}). Falling back to Light Scan...`);
-        try {
-            holdersList = await solanaService.getTopHolders();
-            console.log(`[BagsService] Light scan success. Count: ${holdersList.length}`);
-        } catch (e2) {
-            console.error(`[BagsService] Light scan failed too: ${e2.message}`);
-            _health.failCount++;
-            _health.degraded = true;
-            return; // Abort
-        }
+        console.error(`[BagsService] Light scan failed: ${e.message}`);
+        _health.failCount++;
+        _health.degraded = true;
+        return; // Abort
     }
 
     // 2. Fetch Market Data (Real - DexScreener)

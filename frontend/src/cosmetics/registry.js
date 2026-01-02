@@ -57,6 +57,14 @@ export const HOLDER_TIERS = {
         icon: '🦑',
         className: 'tier-kraken'
     },
+    INNER_CIRCLE: {
+        id: 'inner_circle',
+        name: 'Inner Circle',
+        threshold: 0,
+        color: '#ffd700', // Gold
+        icon: '👁️',
+        className: 'tier-inner-circle'
+    },
     LIQUIDITY: {
         id: 'liquidity',
         name: 'Liquidity',

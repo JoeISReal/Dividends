@@ -6,6 +6,9 @@ export default function UpgradeCard({ upgrade, onBuy, ownedLevel }) {
 
     // Determine icon based on type/key if not provided
     const getIcon = () => {
+        if (upgrade.key === 'click') return '👆';
+        if (upgrade.key === 'global') return '🌐';
+        // Fallbacks for legacy/potential future keys
         if (upgrade.key === 'faster_clicks') return '👆';
         if (upgrade.key === 'shitpost_boost') return '🚀';
         if (upgrade.key === 'global_mult') return '🌐';
@@ -13,29 +16,43 @@ export default function UpgradeCard({ upgrade, onBuy, ownedLevel }) {
     };
 
     return (
-        <div className="upgrade-card surface-secondary">
+        <div
+            className="card"
+            style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                height: '100%',
+                position: 'relative'
+            }}
+        >
             <div className="upgrade-header">
                 <div className="upgrade-icon">{getIcon()}</div>
                 <div className="upgrade-info">
-                    <div className="upgrade-name">{upgrade.name}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div className="upgrade-name">{upgrade.name}</div>
+                        {ownedLevel > 0 && (
+                            <div className="pill pill-gold" style={{ fontSize: '11px', padding: '2px 8px' }}>
+                                LVL {ownedLevel}
+                            </div>
+                        )}
+                    </div>
                     <div className="upgrade-desc">
                         {upgrade.desc}
                     </div>
                 </div>
-                {ownedLevel > 0 && (
-                    <div className="upgrade-level">
-                        {ownedLevel}
-                    </div>
-                )}
             </div>
 
-            <button
-                className="btn-action-primary"
-                style={{ width: '100%' }}
-                onClick={() => onBuy(upgrade.key)}
-            >
-                BUY • ${currentCost.toLocaleString()}
-            </button>
+            <div style={{ marginTop: 'auto', display: 'flex' }}>
+                <button
+                    className="btn-primary"
+                    style={{ flex: 1, display: 'flex', justifyContent: 'space-between', padding: '10px 16px', fontSize: '14px' }}
+                    onClick={() => onBuy(upgrade.key)}
+                >
+                    <span>BUY</span>
+                    <span style={{ opacity: 0.8 }}>${currentCost.toLocaleString()}</span>
+                </button>
+            </div>
         </div>
     );
 }

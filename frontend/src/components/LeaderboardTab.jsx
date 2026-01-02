@@ -63,8 +63,12 @@ export default function LeaderboardTab() {
             {/* Game Stats Header */}
             <div className="surface-primary" style={{ marginBottom: 20, padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 0 10px rgba(245, 199, 122, 0.4)', color: 'var(--bg-root)' }}>
-                        👻
+                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 0 10px rgba(245, 199, 122, 0.4)', color: 'var(--bg-root)', overflow: 'hidden' }}>
+                        {auth.user?.avatar ? (
+                            <img src={auth.user.avatar} alt="You" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            '👻'
+                        )}
                     </div>
                     <div>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--accent-gold)', fontWeight: 700, letterSpacing: '0.1em' }}>YOU</div>
@@ -141,7 +145,13 @@ export default function LeaderboardTab() {
                                         background: isTop3 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 12, fontSize: isTop3 ? 20 : 14
                                     }}>
-                                        {u.holderTier === 'inner_circle' ? '👑' : '👤'}
+                                        {u.avatar ? (
+                                            <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden' }}>
+                                                <img src={u.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            </div>
+                                        ) : (
+                                            u.holderTier === 'inner_circle' ? '👑' : '👤'
+                                        )}
                                     </div>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

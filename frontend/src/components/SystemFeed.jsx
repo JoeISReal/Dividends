@@ -33,33 +33,50 @@ export function SystemFeed({ limit = 4 }) {
 
     return (
         <div className="systemFeed">
-            <div className="systemFeed__header">
-                <span className="systemFeed__title">SYSTEM FEED</span>
-                <span className="systemFeed__meta">{isSilent ? "QUIET" : "LIVE"}</span>
+            <div className="systemFeed__header" style={{ border: 'none', background: 'transparent', padding: '0 0 8px 0' }}>
+                <span className="systemFeed__title" style={{ fontSize: '10px' }}>DIRECTIVE FEED</span>
+                <span className="systemFeed__meta" style={{ fontSize: '10px', opacity: 0.5 }}>{isSilent ? "SILENT" : "ACTIVE"}</span>
             </div>
 
             {isSilent ? (
-                <div className="directive directive--silent">
-                    <div className="directive__line1">System stable</div>
-                    <div className="directive__line2">No active faults.</div>
+                <div className="directive directive--silent" style={{
+                    border: '1px dashed rgba(255,255,255,0.1)',
+                    background: 'transparent',
+                    padding: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    opacity: 0.5
+                }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-green)' }}></div>
+                    <div className="directive__line1" style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-muted)' }}>
+                        System stable — active monitoring
+                    </div>
                 </div>
             ) : (
-                <div className="systemFeed__list">
-                    {items.map((s) => {
+                <div className="systemFeed__list" style={{ gap: '8px' }}>
+                    {items.map((s, index) => {
                         const cls = TYPE_CLASS[s.type] || "directive";
-                        // Ensure legacy signals have a fallback for detail
                         const title = s.message || "System Alert";
-                        const detail = s.detail || (s.type === 'danger' ? "Critical fault detected." : "");
+                        const detail = s.detail;
+
+                        // Opacity decay for older items in the stack
+                        const opacity = 1 - (index * 0.25);
 
                         return (
-                            <div key={s.id} className={cls}>
-                                <div className="directive__row">
-                                    <span className="directive__dot" />
+                            <div key={s.id} className={cls} style={{
+                                opacity: opacity,
+                                borderLeft: `3px solid ${s.type === 'critical' ? 'var(--accent-red)' : 'rgba(255,255,255,0.2)'}`,
+                                background: 'rgba(255,255,255,0.02)',
+                                borderRadius: '4px',
+                                padding: '8px 12px'
+                            }}>
+                                <div className="directive__row" style={{ gridTemplateColumns: '1fr auto', gap: '4px' }}>
                                     <div className="directive__stack">
-                                        <div className="directive__line1">{title}</div>
-                                        {detail && <div className="directive__line2">{detail}</div>}
+                                        <div className="directive__line1" style={{ fontSize: '12px' }}>{title}</div>
+                                        {detail && <div className="directive__line2" style={{ fontSize: '11px', opacity: 0.7 }}>{detail}</div>}
                                     </div>
-                                    <div className="directive__time">{timeAgo(s.timestamp)}</div>
+                                    <div className="directive__time" style={{ fontSize: '9px', opacity: 0.4 }}>{timeAgo(s.timestamp)}</div>
                                 </div>
                             </div>
                         );

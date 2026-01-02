@@ -333,7 +333,8 @@ body {
 
 /* Tile Background - Repeating pattern */
 .bg-abstract-tile {
-    background-image: url('/backgrounds/abstract-money-tile.png');
+    /* background-image: url('/backgrounds/abstract-money-tile.png'); */
+    background: radial-gradient(circle at center, #1a1e26 0%, #05070c 100%);
     background-size: 600px;
     background-repeat: repeat;
 }
