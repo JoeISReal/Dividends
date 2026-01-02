@@ -103,6 +103,8 @@ app.get('/api/debug/health', (req, res) => {
     });
 });
 
+
+
 // --- SYBIL PROTECTION (Phase 3) ---
 import { sybilService } from './_src/services/sybilService.js';
 
@@ -705,6 +707,27 @@ app.get('/api/market/prices', async (req, res) => {
     res.json(data);
 });
 
+// --- PUBLIC ECOSYSTEM STATUS (Hardened) ---
+app.get('/api/public/dividends/status', async (req, res) => {
+    try {
+        const holders = await snapshotService.get('holders');
+        const fees = await snapshotService.get('fees');
+        const mood = await bagsService.getEcosystemMood();
+
+        res.json({
+            ecosystem: {
+                holders: holders.count,
+                feesUSD: fees.totalUsd,
+                mood: mood.mood,
+                lastUpdate: new Date().toISOString()
+            },
+            health: holders.meta?.health || { status: 'unknown' }
+        });
+    } catch (e) {
+        res.status(500).json({ error: "Status check failed" });
+    }
+});
+
 // --- BAGS API ROUTES (Public) ---
 const DIVIDENDS_MINT = process.env.DIVIDENDS_MINT || "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
 
@@ -769,15 +792,25 @@ snapshotService.init();
 // --- V2.3 ROBUST PROXIES (Snapshot Service) ---
 
 app.get('/api/v1/fees', async (req, res) => {
-    console.log("[DEBUG] /api/v1/fees HIT (Snapshot Read)");
-    const data = await snapshotService.get('fees');
-    res.json(data || { formatted: "$31,250.00" });
+    try {
+        console.log("[DEBUG] /api/v1/fees HIT");
+        const data = await snapshotService.get('fees');
+        res.json(data || { formatted: "$31,250.00" });
+    } catch (e) {
+        console.error("CRITICAL ERROR /api/v1/fees:", e);
+        res.status(500).json({ error: e.message, stack: e.stack });
+    }
 });
 
 app.get('/api/v1/holders', async (req, res) => {
-    console.log("[DEBUG] /api/v1/holders HIT (Snapshot Read)");
-    const data = await snapshotService.get('holders');
-    res.json(data || { formatted: "5,432", count: 5432 });
+    try {
+        console.log("[DEBUG] /api/v1/holders HIT");
+        const data = await snapshotService.get('holders');
+        res.json(data || { formatted: "5,432", count: 5432 });
+    } catch (e) {
+        console.error("CRITICAL ERROR /api/v1/holders:", e);
+        res.status(500).json({ error: e.message, stack: e.stack });
+    }
 });
 
 // --- BAGS FEATURE ROUTES ---

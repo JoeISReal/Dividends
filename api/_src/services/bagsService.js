@@ -4,6 +4,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { chaos } from './chaos.js';
 import * as marketService from './marketService.js';
 import * as jupiterService from './jupiterService.js';
+import * as solanaService from './solanaService.js';
 
 // Configuration
 const DIVIDENDS_MINT = "7GB6po6UVqRq8wcTM3sXdM3URoDntcBhSBVhWwVTBAGS";
@@ -27,6 +28,11 @@ let _tierThresholds = {
     whale: 0,
     chad: 0,
     medium: 0
+};
+let _health = {
+    lastSuccessAt: null,
+    failCount: 0,
+    degraded: false
 };
 
 /**
@@ -238,8 +244,24 @@ async function refreshSnapshot() {
     await chaos.maybeDelay('snapshot_refresh');
     chaos.maybeFail('snapshot_refresh');
 
-    // 1. Fetch Holders via RPC
-    const holdersList = await fetchHoldersFromRPC();
+    // 1. Fetch Holders via RPC (Centralized Service)
+    let holdersList = [];
+    try {
+        // Try heavy scan first
+        holdersList = await solanaService.getAllHolders();
+        console.log(`[BagsService] Heavy scan success. Count: ${holdersList.length}`);
+    } catch (e) {
+        console.warn(`[BagsService] Heavy scan failed (${e.message}). Falling back to Light Scan...`);
+        try {
+            holdersList = await solanaService.getTopHolders();
+            console.log(`[BagsService] Light scan success. Count: ${holdersList.length}`);
+        } catch (e2) {
+            console.error(`[BagsService] Light scan failed too: ${e2.message}`);
+            _health.failCount++;
+            _health.degraded = true;
+            return; // Abort
+        }
+    }
 
     // 2. Fetch Market Data (Real - DexScreener)
     const realMarketData = await marketService.fetchTokenData(DIVIDENDS_MINT);
@@ -287,114 +309,19 @@ async function refreshSnapshot() {
     _currentSnapshot = processSnapshotForCache(snapshot);
     _tierThresholds = snapshot.thresholds;
 
+    // Health Update
+    _health.lastSuccessAt = new Date();
+    _health.failCount = 0;
+    _health.degraded = false;
+
     console.log(`[BagsService] Snapshot refreshed. Mood: ${metrics.mood} Tags: ${metrics.tags?.join(',')}`);
 }
 
-const FALLBACK_RPCS = [
-    "https://api.mainnet-beta.solana.com",
-    "https://rpc.ankr.com/solana",
-    "https://solana-mainnet.rpc.extrnode.com"
-];
-
-async function fetchHoldersFromRPC() {
-    const primary = process.env.SOLANA_RPC_URL;
-    const targets = primary ? [primary, ...FALLBACK_RPCS] : FALLBACK_RPCS;
-
-    for (const rpcUrl of targets) {
-        if (!rpcUrl) continue;
-        console.log(`[BagsService] Fetching holders via RPC: ${rpcUrl}...`);
-
-        try {
-            const connection = new Connection(rpcUrl, 'confirmed');
-
-            // Strategy 1: Full Scan (Heavy, but gets Total Count)
-            // Public RPCs often block this. If it fails, we fall back to Strategy 2.
-            try {
-                // Short timeout for heavy call to fail fast
-                const accounts = await Promise.race([
-                    connection.getParsedProgramAccounts(
-                        TOKEN_PROGRAM_ID,
-                        {
-                            filters: [
-                                { dataSize: 165 },
-                                { memcmp: { offset: 0, bytes: DIVIDENDS_MINT } },
-                            ],
-                        }
-                    ),
-                    new Promise((_, r) => setTimeout(() => r(new Error("Timeout")), 15000))
-                ]);
-
-                console.log(`[BagsService] Heavy scan success via ${rpcUrl}`);
-                return accounts.map(a => ({
-                    wallet: a.account.data.parsed.info.owner,
-                    balance: a.account.data.parsed.info.tokenAmount.uiAmount
-                })).filter(h => h.balance > 0);
-
-            } catch (heavyError) {
-                console.warn(`[BagsService] Heavy scan failed via ${rpcUrl} (${heavyError.message}). Trying Light Scan...`);
-                // Fallback to Strategy 2 immediately on same RPC
-                return await fetchTopHoldersLight(connection);
-            }
-
-        } catch (e) {
-            console.warn(`[BagsService] Connection failed to ${rpcUrl}: ${e.message}`);
-        }
-    }
-
-    console.error("[BagsService] All RPC attempts failed.");
-    return null;
+export function getHealth() {
+    return { ..._health };
 }
 
-// Strategy 2: Light Scan (Top 20 Only) - Very reliable on public RPCs
-async function fetchTopHoldersLight(connection) {
-    try {
-        const largest = await connection.getTokenLargestAccounts(new PublicKey(DIVIDENDS_MINT));
-        if (!largest || !largest.value) return null;
-
-        const tokenAccounts = largest.value.slice(0, 50); // Get up to 20 usually
-        const pubkeys = tokenAccounts.map(t => t.address);
-
-        // Fetch account info to get Owners
-        const accountInfos = await connection.getMultipleAccountsInfo(pubkeys);
-
-        const results = [];
-        // Manual parse of Token Account Layout (or rely on UI Amount if trusted)
-        // getTokenLargestAccounts gives UI Amount mostly? 
-        // Actually it gives uiAmount in the first call response!
-
-        // We need OWNERS. getTokenLargestAccounts result is { address, amount, decimals, uiAmountString }
-        // Wait, largest.value items are { address: PublicKey, amount: string, decimals: number, uiAmount: number, uiAmountString: string }
-        // But address is the TOKEN ACCOUNT address, not the Wallet.
-        // We must fetch the Token Account Data to read the generic SPL "owner" field.
-
-        // Use web3.js layout parsing for Owner? 
-        // Or getParsedMultipleAccounts?
-        // Let's use getParsedMultipleAccountsInfo (lighter) if available or just getMultipleAccounts & parse.
-        // connection.getMultipleParsedAccounts? No.
-
-        // Let's use getMultipleAccountsInfo and simple parse.
-        // Offset 32 is Owner (Public Key) in SPL Token Layout.
-
-        accountInfos.forEach((info, i) => {
-            if (!info) return;
-            const data = info.data;
-            if (data.length < 64) return; // safety
-
-            // Owner is at offset 32 (after Mint 32)
-            const owner = new PublicKey(data.slice(32, 64)).toBase58();
-            const balance = tokenAccounts[i].uiAmount;
-
-            results.push({ wallet: owner, balance });
-        });
-
-        console.log(`[BagsService] Light scan success! Retrieved ${results.length} top holders.`);
-        return results;
-
-    } catch (e) {
-        console.error(`[BagsService] Light scan failed: ${e.message}`);
-        return null;
-    }
-}
+// RPC Logic moved to solanaService.js
 
 function analyzeSnapshot(currentHolders, previousSnapshot, volume24h) {
     const totalSupply = 1000000000;
@@ -573,9 +500,16 @@ export async function getTokenFees(mint) {
 export async function getTopHolders(mint) {
     try {
         const lb = await getLeaderboard();
-        return lb.topHolders || [];
+        return {
+            holders: lb.topHolders || [],
+            updatedAt: lb.updatedAt,
+            source: 'snapshot',
+            meta: {
+                count: lb.topHolders?.length || 0
+            }
+        };
     } catch (e) {
         console.error("[BagsService] getTopHolders failed:", e);
-        return [];
+        return { holders: [], error: e.message };
     }
 }
