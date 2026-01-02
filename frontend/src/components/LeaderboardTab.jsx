@@ -122,6 +122,7 @@ export default function LeaderboardTab() {
                             .map((u, i) => {
                                 const isMe = u.handle === auth.user?.handle;
                                 const isTop3 = i < 3;
+                                const isAdmin = auth.user?.role === 'ADMIN';
 
                                 // Top 3 Visuals
                                 let bg = 'transparent';
@@ -130,6 +131,30 @@ export default function LeaderboardTab() {
                                 else if (i % 2 === 1) bg = 'rgba(255,255,255,0.01)'; // Zebra striping
 
                                 let border = isMe ? '1px solid var(--accent-gold)' : (isTop3 ? '1px solid var(--border-subtle)' : '1px solid transparent');
+
+                                const handleQuickHide = async () => {
+                                    if (!confirm(`Hide ${u.displayName || u.handle?.slice(0, 8)} from leaderboard?`)) return;
+
+                                    try {
+                                        const API_BASE = import.meta.env.VITE_API_URL || '';
+                                        const res = await fetch(`${API_BASE}/api/admin/leaderboard/hide`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            credentials: 'include',
+                                            body: JSON.stringify({ targetHandle: u.handle })
+                                        });
+
+                                        if (res.ok) {
+                                            alert('✅ User hidden from leaderboard');
+                                            fetchLeaderboard(); // Refresh
+                                        } else {
+                                            alert('❌ Failed to hide user');
+                                        }
+                                    } catch (e) {
+                                        console.error('Hide error:', e);
+                                        alert('❌ Error hiding user');
+                                    }
+                                };
 
                                 return (
                                     <div key={i} style={{
@@ -166,16 +191,49 @@ export default function LeaderboardTab() {
                                                 </span>
                                                 <TierBadge balance={u.holderBalanceApprox || 0} size="xs" showName={false} />
                                             </div>
-                                            {isTop3 && (
-                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', marginTop: 2 }}>
-                                                    LVL {u.level || 1} • {u.handle?.slice(0, 4)}...{u.handle?.slice(-4)}
-                                                </div>
-                                            )}
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', marginTop: 2 }}>
+                                                {isTop3 && `LVL ${u.level || 1} • `}
+                                                {isAdmin ? (
+                                                    <span
+                                                        style={{ cursor: 'pointer' }}
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(u.handle);
+                                                            alert('📋 Address copied!');
+                                                        }}
+                                                        title="Click to copy full address"
+                                                    >
+                                                        {u.handle}
+                                                    </span>
+                                                ) : (
+                                                    `${u.handle?.slice(0, 4)}...${u.handle?.slice(-4)}`
+                                                )}
+                                            </div>
                                         </div>
-                                        <div style={{ textAlign: 'right' }}>
+                                        <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: 12 }}>
                                             <div style={{ color: 'var(--accent-green)', fontWeight: 600, fontFamily: 'monospace', fontSize: isTop3 ? 16 : 14 }}>
                                                 ${u.lifetimeYield?.toLocaleString()}
                                             </div>
+                                            {isAdmin && !isMe && (
+                                                <button
+                                                    onClick={handleQuickHide}
+                                                    style={{
+                                                        padding: '4px 8px',
+                                                        fontSize: '10px',
+                                                        background: 'rgba(255,59,48,0.1)',
+                                                        border: '1px solid rgba(255,59,48,0.3)',
+                                                        borderRadius: '4px',
+                                                        color: '#ff453a',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 600,
+                                                        opacity: 0.7,
+                                                        transition: 'opacity 0.2s'
+                                                    }}
+                                                    onMouseEnter={(e) => e.target.style.opacity = '1'}
+                                                    onMouseLeave={(e) => e.target.style.opacity = '0.7'}
+                                                >
+                                                    ✕ Hide
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 );
