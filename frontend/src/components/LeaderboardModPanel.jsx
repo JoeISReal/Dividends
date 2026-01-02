@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../state/gameStore';
+import { useToast } from './ToastProvider';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export default function LeaderboardModPanel() {
     const auth = useGameStore(s => s.auth);
+    const { showToast, confirm } = useToast();
     const [users, setUsers] = useState([]);
     const [searchInput, setSearchInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -50,27 +52,27 @@ export default function LeaderboardModPanel() {
             ? `Show ${handle.slice(0, 8)}... on leaderboard?`
             : `Hide ${handle.slice(0, 8)}... from leaderboard?`;
 
-        if (!confirm(confirmMsg)) return;
+        confirm(confirmMsg, async () => {
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/leaderboard/${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ targetHandle: handle })
+                });
 
-        try {
-            const res = await fetch(`${API_BASE}/api/admin/leaderboard/${action}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ targetHandle: handle })
-            });
-
-            if (res.ok) {
-                fetchUsers(); // Refresh
-                alert(`✅ User ${action === 'hide' ? 'hidden from' : 'shown on'} leaderboard`);
-            } else {
-                const error = await res.json();
-                alert(`❌ Error: ${error.error}`);
+                if (res.ok) {
+                    fetchUsers(); // Refresh
+                    showToast(`User ${action === 'hide' ? 'hidden from' : 'shown on'} leaderboard`, 'success');
+                } else {
+                    const error = await res.json();
+                    showToast(`Error: ${error.error}`, 'error');
+                }
+            } catch (e) {
+                console.error(`${action} error:`, e);
+                showToast(`Failed to ${action} user`, 'error');
             }
-        } catch (e) {
-            console.error(`${action} error:`, e);
-            alert(`❌ Failed to ${action} user`);
-        }
+        });
     };
 
     return (
@@ -181,25 +183,26 @@ export default function LeaderboardModPanel() {
                                         {user.hiddenFromLeaderboard ? '✓ Show' : '✕ Hide'}
                                     </button>
                                     <button
-                                        onClick={async () => {
-                                            if (!confirm(`Reset stats for ${user.displayName || user.handle.slice(0, 8)}? This will set their level and earnings to 0.`)) return;
-                                            try {
-                                                const res = await fetch(`${API_BASE}/api/admin/users/reset-stats`, {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    credentials: 'include',
-                                                    body: JSON.stringify({ targetHandle: user.handle })
-                                                });
-                                                if (res.ok) {
-                                                    alert('✅ User stats reset');
-                                                    fetchUsers();
-                                                } else {
-                                                    alert('❌ Failed to reset stats');
+                                        onClick={() => {
+                                            confirm(`Reset stats for ${user.displayName || user.handle.slice(0, 8)}? This will set their level and earnings to 0.`, async () => {
+                                                try {
+                                                    const res = await fetch(`${API_BASE}/api/admin/users/reset-stats`, {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        credentials: 'include',
+                                                        body: JSON.stringify({ targetHandle: user.handle })
+                                                    });
+                                                    if (res.ok) {
+                                                        showToast('User stats reset', 'success');
+                                                        fetchUsers();
+                                                    } else {
+                                                        showToast('Failed to reset stats', 'error');
+                                                    }
+                                                } catch (e) {
+                                                    console.error('Reset error:', e);
+                                                    showToast('Error resetting stats', 'error');
                                                 }
-                                            } catch (e) {
-                                                console.error('Reset error:', e);
-                                                alert('❌ Error resetting stats');
-                                            }
+                                            });
                                         }}
                                         style={{
                                             padding: '6px 12px',
@@ -215,26 +218,28 @@ export default function LeaderboardModPanel() {
                                         ↻ Reset
                                     </button>
                                     <button
-                                        onClick={async () => {
-                                            if (!confirm(`DELETE ${user.displayName || user.handle.slice(0, 8)}? This action CANNOT be undone!`)) return;
-                                            if (!confirm('Are you ABSOLUTELY sure? This will permanently delete the user account.')) return;
-                                            try {
-                                                const res = await fetch(`${API_BASE}/api/admin/users/delete`, {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    credentials: 'include',
-                                                    body: JSON.stringify({ targetHandle: user.handle })
+                                        onClick={() => {
+                                            confirm(`DELETE ${user.displayName || user.handle.slice(0, 8)}? This action CANNOT be undone!`, () => {
+                                                confirm('Are you ABSOLUTELY sure? This will permanently delete the user account.', async () => {
+                                                    try {
+                                                        const res = await fetch(`${API_BASE}/api/admin/users/delete`, {
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            credentials: 'include',
+                                                            body: JSON.stringify({ targetHandle: user.handle })
+                                                        });
+                                                        if (res.ok) {
+                                                            showToast('User deleted', 'success');
+                                                            fetchUsers();
+                                                        } else {
+                                                            showToast('Failed to delete user', 'error');
+                                                        }
+                                                    } catch (e) {
+                                                        console.error('Delete error:', e);
+                                                        showToast('Error deleting user', 'error');
+                                                    }
                                                 });
-                                                if (res.ok) {
-                                                    alert('✅ User deleted');
-                                                    fetchUsers();
-                                                } else {
-                                                    alert('❌ Failed to delete user');
-                                                }
-                                            } catch (e) {
-                                                console.error('Delete error:', e);
-                                                alert('❌ Error deleting user');
-                                            }
+                                            });
                                         }}
                                         style={{
                                             padding: '6px 12px',

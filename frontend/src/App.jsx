@@ -18,6 +18,7 @@ import DegenArenaPage from './pages/DegenArenaPage';
 import DashboardTab from './components/DashboardTab';
 import PrestigeTab from './components/PrestigeTab';
 import { soundManager } from './game/SoundManager';
+import { ToastProvider } from './components/ToastProvider';
 
 export default function App() {
   const auth = useGameStore(s => s.auth);
@@ -168,14 +169,14 @@ export default function App() {
   }
 
   return (
-    <>
+    <ToastProvider>
       <AppShell
         activeTab={activeTab}
         onTabChange={setActiveTab}
         centerContent={centerContent}
       />
       <NotificationToast />
-    </>
+    </ToastProvider>
   );
 }
 

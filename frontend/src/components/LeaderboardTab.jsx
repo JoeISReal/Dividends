@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../state/gameStore';
 import LeaderboardModPanel from './LeaderboardModPanel';
+import { useToast } from './ToastProvider';
 
 import { soundManager } from '../game/SoundManager';
 import { TierBadge } from './TierBadge';
 
 export default function LeaderboardTab() {
     const auth = useGameStore(s => s.auth);
+    const { showToast, confirm } = useToast();
 
 
     // Game Leaderboard only
@@ -132,28 +134,28 @@ export default function LeaderboardTab() {
 
                                 let border = isMe ? '1px solid var(--accent-gold)' : (isTop3 ? '1px solid var(--border-subtle)' : '1px solid transparent');
 
-                                const handleQuickHide = async () => {
-                                    if (!confirm(`Hide ${u.displayName || u.handle?.slice(0, 8)} from leaderboard?`)) return;
+                                const handleQuickHide = () => {
+                                    confirm(`Hide ${u.displayName || u.handle?.slice(0, 8)} from leaderboard?`, async () => {
+                                        try {
+                                            const API_BASE = import.meta.env.VITE_API_URL || '';
+                                            const res = await fetch(`${API_BASE}/api/admin/leaderboard/hide`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                credentials: 'include',
+                                                body: JSON.stringify({ targetHandle: u.handle })
+                                            });
 
-                                    try {
-                                        const API_BASE = import.meta.env.VITE_API_URL || '';
-                                        const res = await fetch(`${API_BASE}/api/admin/leaderboard/hide`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            credentials: 'include',
-                                            body: JSON.stringify({ targetHandle: u.handle })
-                                        });
-
-                                        if (res.ok) {
-                                            alert('✅ User hidden from leaderboard');
-                                            fetchLeaderboard(); // Refresh
-                                        } else {
-                                            alert('❌ Failed to hide user');
+                                            if (res.ok) {
+                                                showToast('User hidden from leaderboard', 'success');
+                                                fetchLeaderboard(); // Refresh
+                                            } else {
+                                                showToast('Failed to hide user', 'error');
+                                            }
+                                        } catch (e) {
+                                            console.error('Hide error:', e);
+                                            showToast('Error hiding user', 'error');
                                         }
-                                    } catch (e) {
-                                        console.error('Hide error:', e);
-                                        alert('❌ Error hiding user');
-                                    }
+                                    });
                                 };
 
                                 return (
