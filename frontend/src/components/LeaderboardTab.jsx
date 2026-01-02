@@ -251,6 +251,9 @@ export default function LeaderboardTab() {
                     </div>
                 )}
 
+                {/* Spacer to push mod panel down - requires scroll */}
+                <div style={{ height: '400px' }} />
+
                 {/* Leaderboard Moderation Panel (ADMIN only) */}
                 <LeaderboardModPanel />
             </div>

@@ -181,4 +181,72 @@ router.post('/leaderboard/unhide', requireAdmin, async (req, res) => {
     }
 });
 
+// POST /api/admin/users/reset-stats - Reset user stats (level, earnings, etc)
+router.post('/users/reset-stats', requireAdmin, async (req, res) => {
+    const { targetHandle } = req.body;
+    const adminWallet = req.session.wallet;
+
+    try {
+        const result = await db.collection('users').updateOne(
+            { handle: targetHandle },
+            {
+                $set: {
+                    level: 1,
+                    lifetimeYield: 0,
+                    balance: 0,
+                    yieldPerSecond: 0,
+                    ownedManagers: [],
+                    ownedUpgrades: [],
+                    prestigeLevel: 0,
+                    prestigeMultiplier: 1
+                }
+            }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Audit log
+        await db.collection('audit_log').insertOne({
+            admin: adminWallet,
+            action: 'RESET_USER_STATS',
+            target: targetHandle,
+            timestamp: new Date()
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Reset stats error:', e);
+        res.status(500).json({ error: 'Failed to reset stats' });
+    }
+});
+
+// POST /api/admin/users/delete - Delete user account
+router.post('/users/delete', requireAdmin, async (req, res) => {
+    const { targetHandle } = req.body;
+    const adminWallet = req.session.wallet;
+
+    try {
+        // Audit log before deletion
+        await db.collection('audit_log').insertOne({
+            admin: adminWallet,
+            action: 'DELETE_USER',
+            target: targetHandle,
+            timestamp: new Date()
+        });
+
+        const result = await db.collection('users').deleteOne({ handle: targetHandle });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Delete user error:', e);
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
+});
+
 export default router;

@@ -164,7 +164,7 @@ export default function LeaderboardModPanel() {
                                         }}>
                                             HIDDEN
                                         </div>
-                                    )}
+                                    )}\r
                                     <button
                                         onClick={() => toggleHidden(user.handle, user.hiddenFromLeaderboard)}
                                         style={{
@@ -179,6 +179,75 @@ export default function LeaderboardModPanel() {
                                         }}
                                     >
                                         {user.hiddenFromLeaderboard ? '✓ Show' : '✕ Hide'}
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            if (!confirm(`Reset stats for ${user.displayName || user.handle.slice(0, 8)}? This will set their level and earnings to 0.`)) return;
+                                            try {
+                                                const res = await fetch(`${API_BASE}/api/admin/users/reset-stats`, {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    credentials: 'include',
+                                                    body: JSON.stringify({ targetHandle: user.handle })
+                                                });
+                                                if (res.ok) {
+                                                    alert('✅ User stats reset');
+                                                    fetchUsers();
+                                                } else {
+                                                    alert('❌ Failed to reset stats');
+                                                }
+                                            } catch (e) {
+                                                console.error('Reset error:', e);
+                                                alert('❌ Error resetting stats');
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '6px 12px',
+                                            fontSize: '11px',
+                                            background: 'rgba(255,159,10,0.1)',
+                                            border: '1px solid rgba(255,159,10,0.3)',
+                                            borderRadius: '4px',
+                                            color: '#ff9f0a',
+                                            cursor: 'pointer',
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        ↻ Reset
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            if (!confirm(`DELETE ${user.displayName || user.handle.slice(0, 8)}? This action CANNOT be undone!`)) return;
+                                            if (!confirm('Are you ABSOLUTELY sure? This will permanently delete the user account.')) return;
+                                            try {
+                                                const res = await fetch(`${API_BASE}/api/admin/users/delete`, {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    credentials: 'include',
+                                                    body: JSON.stringify({ targetHandle: user.handle })
+                                                });
+                                                if (res.ok) {
+                                                    alert('✅ User deleted');
+                                                    fetchUsers();
+                                                } else {
+                                                    alert('❌ Failed to delete user');
+                                                }
+                                            } catch (e) {
+                                                console.error('Delete error:', e);
+                                                alert('❌ Error deleting user');
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '6px 12px',
+                                            fontSize: '11px',
+                                            background: 'rgba(255,59,48,0.15)',
+                                            border: '1px solid rgba(255,59,48,0.4)',
+                                            borderRadius: '4px',
+                                            color: '#ff453a',
+                                            cursor: 'pointer',
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        🗑 Delete
                                     </button>
                                 </div>
                             </div>
