@@ -56,6 +56,14 @@ export const HOLDER_TIERS = {
         color: '#f5c77a', // Gold
         icon: '🦑',
         className: 'tier-kraken'
+    },
+    LIQUIDITY: {
+        id: 'liquidity',
+        name: 'Liquidity',
+        threshold: 0, // Special tier, no threshold
+        color: '#2dd4bf', // Teal 400
+        icon: '💧',
+        className: 'tier-liquidity'
     }
 };
 
