@@ -1,0 +1,27 @@
+name = "dividends-api-gateway"
+main = "src/worker.js"
+compatibility_date = "2024-01-01"
+
+# Worker routes
+routes = [
+  { pattern = "dividendspro.com/api/*", zone_name = "dividendspro.com" },
+  { pattern = "www.dividendspro.com/api/*", zone_name = "dividendspro.com" }
+]
+
+# KV Namespaces for rate limiting and caching
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "94e817ca290440b5a57295ee7813ba80"
+
+[[kv_namespaces]]
+binding = "CACHE_KV"
+id = "f1a334121a1249759420a63228b44458"
+
+# Environment variables (non-sensitive)
+[vars]
+ORIGIN_URL = "https://dividends-backend-28o8.onrender.com"
+
+# Note: Create KV namespaces with:
+# wrangler kv:namespace create "RATE_LIMIT_KV"
+# wrangler kv:namespace create "CACHE_KV"
+# Then replace YOUR_*_KV_ID with the actual IDs

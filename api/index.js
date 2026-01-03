@@ -45,10 +45,12 @@ app.use(cors({
     origin: function (origin, callback) {
         const allowedOrigins = [
             process.env.CLIENT_ORIGIN,
+            "https://dividendspro.com",
+            "https://www.dividendspro.com",
             "http://localhost:5173",
             "http://localhost:4173",
             "http://127.0.0.1:5173"
-        ];
+        ].filter(Boolean);
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
 
@@ -99,7 +101,12 @@ if (uri) {
 }
 
 // Health Check
-app.get('/api/health', (req, res) => res.json({ status: 'ok', time: Date.now() }));
+app.get('/api/health', (req, res) => res.json({
+    status: 'ok',
+    timestamp: Date.now(),
+    rpc: solanaService.getActiveEndpoint(),
+    uptime: process.uptime()
+}));
 
 // Version Check
 app.get('/api/version', (req, res) => res.json({

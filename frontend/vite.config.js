@@ -20,6 +20,9 @@ export default defineConfig({
     }
   },
   build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -27,5 +30,8 @@ export default defineConfig({
         },
       },
     },
+    target: 'es2020',
+    minify: 'esbuild',
+    chunkSizeWarningLimit: 1000,
   }
 })

@@ -200,7 +200,7 @@ export default function LeaderboardTab() {
                                                         style={{ cursor: 'pointer' }}
                                                         onClick={() => {
                                                             navigator.clipboard.writeText(u.handle);
-                                                            alert('📋 Address copied!');
+                                                            showToast('Address copied!', 'success');
                                                         }}
                                                         title="Click to copy full address"
                                                     >
